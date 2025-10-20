@@ -192,6 +192,45 @@ export async function getMessages(
 }
 
 /**
+ * Get messages with pagination (before a specific message)
+ */
+export async function getMessagesBefore(
+  conversationId: string,
+  beforeDate: Date,
+  limitCount: number = 50
+): Promise<Message[]> {
+  try {
+    const q = query(
+      collection(db, 'conversations', conversationId, 'messages'),
+      where('createdAt', '<', beforeDate),
+      orderBy('createdAt', 'desc'),
+      limit(limitCount)
+    );
+
+    const snapshot = await getDocs(q);
+    
+    return snapshot.docs
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          conversationId,
+          senderId: data.senderId,
+          text: data.text,
+          attachments: data.attachments,
+          deliveryStatus: data.deliveryStatus,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate(),
+        };
+      })
+      .reverse(); // Reverse to show oldest first
+  } catch (error: any) {
+    console.error('Error fetching messages before date:', error);
+    throw new Error(error.message || 'Failed to fetch messages');
+  }
+}
+
+/**
  * Listen to messages in real-time
  */
 export function subscribeToMessages(
