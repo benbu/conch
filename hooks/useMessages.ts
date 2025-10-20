@@ -2,28 +2,37 @@
 import { useCallback, useEffect } from 'react';
 import { cacheMessages, getCachedMessages } from '../services/cacheService';
 import {
-    sendMessage as sendMessageToFirestore,
-    subscribeToMessages,
-    updateMessageStatus,
+  sendMessage as sendMessageToFirestore,
+  subscribeToMessages,
+  updateMessageStatus,
 } from '../services/firestoreService';
 import { selectUser, useAuthStore } from '../stores/authStore';
 import {
-    selectMessageLoading,
-    selectMessages,
-    useChatStore,
+  selectMessageLoading,
+  selectMessages,
+  useChatStore,
 } from '../stores/chatStore';
 import { Message } from '../types';
 import { useOfflineQueue } from './useOfflineQueue';
 
+// Stable references to avoid infinite loops when no conversationId is provided
+const EMPTY_MESSAGES: Message[] = [];
+const FALSE_CONST = false;
+const selectEmptyMessages = () => EMPTY_MESSAGES;
+const selectFalse = () => FALSE_CONST;
+
 export function useMessages(conversationId: string | null) {
   const user = useAuthStore(selectUser);
   const messages = useChatStore(
-    conversationId ? selectMessages(conversationId) : () => []
+    conversationId ? selectMessages(conversationId) : selectEmptyMessages
   );
   const loading = useChatStore(
-    conversationId ? selectMessageLoading(conversationId) : () => false
+    conversationId ? selectMessageLoading(conversationId) : selectFalse
   );
-  const { setMessages, addMessage, updateMessage, setMessageLoading } = useChatStore();
+  const setMessages = useChatStore((s) => s.setMessages);
+  const addMessage = useChatStore((s) => s.addMessage);
+  const updateMessage = useChatStore((s) => s.updateMessage);
+  const setMessageLoading = useChatStore((s) => s.setMessageLoading);
   const { queueMessage, isConnected } = useOfflineQueue();
 
   // Load cached messages first, then subscribe to real-time updates

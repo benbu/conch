@@ -15,22 +15,23 @@ import { pickImageFromGallery, uploadConversationImage } from '@/services/imageS
 import { useChatStore } from '@/stores/chatStore';
 import { Message } from '@/types';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function ChatScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const conversationId = Array.isArray(params.id) ? params.id?.[0] ?? null : params.id ?? null;
   const [messageText, setMessageText] = useState('');
   const [uploading, setUploading] = useState(false);
   const [showAIMenu, setShowAIMenu] = useState(false);
@@ -40,16 +41,23 @@ export default function ChatScreen() {
   const [showPriority, setShowPriority] = useState(false);
   
   const { user } = useAuth();
-  const { messages, loading, sendMessage, loadMoreMessages } = useMessages(id);
+  const { messages, loading, sendMessage, loadMoreMessages } = useMessages(conversationId);
   const conversation = useChatStore((state) =>
-    state.conversations.find((c) => c.id === id)
+    conversationId ? state.conversations.find((c) => c.id === conversationId) : undefined
   );
 
   // AI hooks
-  const aiSummary = useAISummary(id, { autoLoad: true });
-  const aiActions = useAIActions(id, { autoLoad: true });
-  const aiDecisions = useAIDecisions(id, { autoLoad: true });
-  const aiPriority = useAIPriority(id, { autoLoad: true });
+  const aiSummary = useAISummary(conversationId, { autoLoad: true });
+  const aiActions = useAIActions(conversationId, { autoLoad: true });
+  const aiDecisions = useAIDecisions(conversationId, { autoLoad: true });
+  const aiPriority = useAIPriority(conversationId, { autoLoad: true });
+
+  useEffect(() => {
+    useChatStore.getState().setCurrentConversation(conversationId);
+    return () => {
+      useChatStore.getState().setCurrentConversation(null);
+    };
+  }, [conversationId]);
 
   const handleSend = async () => {
     if (!messageText.trim()) return;
@@ -66,11 +74,11 @@ export default function ChatScreen() {
   const handleImagePick = async () => {
     try {
       const image = await pickImageFromGallery();
-      if (!image || !id) return;
+      if (!image || !conversationId) return;
 
       setUploading(true);
       
-      const imageUrl = await uploadConversationImage(id, image.uri, (progress) => {
+      const imageUrl = await uploadConversationImage(conversationId, image.uri, (progress) => {
         console.log(`Upload progress: ${progress.progress.toFixed(0)}%`);
       });
 
@@ -125,6 +133,14 @@ export default function ChatScreen() {
       </View>
     );
   };
+
+  if (!conversationId) {
+    return (
+      <View style={styles.centered}>
+        <Text>Invalid conversation. Please go back and try again.</Text>
+      </View>
+    );
+  }
 
   if (loading && messages.length === 0) {
     return (
