@@ -2,6 +2,10 @@
 import { create } from 'zustand';
 import { Conversation, Message, User } from '../types';
 
+// Stable fallbacks to avoid returning new references on every selector read
+const EMPTY_MESSAGES: Message[] = [];
+const FALSE = false;
+
 interface ChatStore {
   // State
   conversations: Conversation[];
@@ -157,7 +161,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
   
   getMessagesByConversationId: (id) => {
-    return get().messages[id] || [];
+    return get().messages[id] ?? EMPTY_MESSAGES;
   },
   
   getUnreadCount: () => {
@@ -179,8 +183,8 @@ export const selectConversations = (state: ChatStore) => state.conversations;
 export const selectCurrentConversationId = (state: ChatStore) => state.currentConversationId;
 export const selectCurrentConversation = (state: ChatStore) => state.getCurrentConversation();
 export const selectMessages = (conversationId: string) => (state: ChatStore) =>
-  state.messages[conversationId] || [];
+  state.messages[conversationId] ?? EMPTY_MESSAGES;
 export const selectMessageLoading = (conversationId: string) => (state: ChatStore) =>
-  state.messageLoading[conversationId] || false;
+  state.messageLoading[conversationId] ?? FALSE;
 export const selectUnreadCount = (state: ChatStore) => state.getUnreadCount();
 
