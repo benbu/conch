@@ -1,9 +1,9 @@
 // Custom hook for conversations
 import { useCallback, useEffect } from 'react';
 import {
-    createConversation,
-    getUsersByIds,
-    subscribeToConversations,
+  createConversation,
+  getUsersByIds,
+  subscribeToConversations,
 } from '../services/firestoreService';
 import { selectUser, useAuthStore } from '../stores/authStore';
 import { selectConversations, useChatStore } from '../stores/chatStore';
@@ -11,27 +11,26 @@ import { selectConversations, useChatStore } from '../stores/chatStore';
 export function useConversations() {
   const conversations = useChatStore(selectConversations);
   const user = useAuthStore(selectUser);
-  const { setConversations, addConversation, setConversationParticipants } = useChatStore();
 
   // Subscribe to conversations when user is logged in
   useEffect(() => {
     if (!user) {
-      setConversations([]);
+      useChatStore.getState().setConversations([]);
       return;
     }
 
     const unsubscribe = subscribeToConversations(user.id, async (conversations) => {
-      setConversations(conversations);
+      useChatStore.getState().setConversations(conversations);
 
       // Fetch participants for each conversation
       for (const conv of conversations) {
         const participants = await getUsersByIds(conv.participantIds);
-        setConversationParticipants(conv.id, participants);
+        useChatStore.getState().setConversationParticipants(conv.id, participants);
       }
     });
 
     return () => unsubscribe();
-  }, [user, setConversations, setConversationParticipants]);
+  }, [user]);
 
   const createNewConversation = useCallback(
     async (

@@ -1,4 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
+import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { Link } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -17,7 +18,8 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signInGoogle } = useAuth();
+  const { signIn } = useAuth();
+  const { signInWithGoogle, isLoading: isGoogleLoading } = useGoogleAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -38,12 +40,10 @@ export default function LoginScreen() {
 
   const handleGoogleLogin = async () => {
     try {
-      setLoading(true);
-      await signInGoogle();
+      await signInWithGoogle();
+      // The useGoogleAuth hook handles the rest (loading, error, success)
     } catch (error: any) {
       Alert.alert('Google Login Failed', error.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -97,9 +97,13 @@ export default function LoginScreen() {
           <TouchableOpacity
             style={[styles.button, styles.secondaryButton]}
             onPress={handleGoogleLogin}
-            disabled={loading}
+            disabled={loading || isGoogleLoading}
           >
-            <Text style={styles.secondaryButtonText}>Continue with Google</Text>
+            {isGoogleLoading ? (
+              <ActivityIndicator color="#333" />
+            ) : (
+              <Text style={styles.secondaryButtonText}>Continue with Google</Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.footer}>
