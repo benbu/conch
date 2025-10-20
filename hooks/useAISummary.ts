@@ -3,8 +3,8 @@
  * Hook for generating and managing conversation summaries
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { generateSummary, aiCacheService } from '../services/aiService';
+import { useCallback, useEffect, useState } from 'react';
+import { aiCacheService, generateSummary } from '../services/aiService';
 import { AISummary } from '../types';
 
 interface UseAISummaryOptions {
