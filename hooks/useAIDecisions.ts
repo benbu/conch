@@ -3,8 +3,8 @@
  * Hook for tracking and managing decisions
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { trackDecisions, aiCacheService } from '../services/aiService';
+import { useCallback, useEffect, useState } from 'react';
+import { aiCacheService, trackDecisions } from '../services/aiService';
 import { AIDecision } from '../types';
 
 interface UseAIDecisionsOptions {

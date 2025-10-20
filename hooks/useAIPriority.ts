@@ -3,8 +3,8 @@
  * Hook for detecting priority messages
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { detectPriority, aiCacheService } from '../services/aiService';
+import { useCallback, useEffect, useState } from 'react';
+import { aiCacheService, detectPriority } from '../services/aiService';
 import { AIPriority } from '../types';
 
 interface UseAIPriorityOptions {

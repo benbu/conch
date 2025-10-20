@@ -3,17 +3,17 @@
  * Displays AI-generated conversation summaries in a bottom sheet
  */
 
+import { format } from 'date-fns';
 import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
+    ActivityIndicator,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { format } from 'date-fns';
 import { AISummary } from '../types';
 
 interface AISummarySheetProps {
