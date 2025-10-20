@@ -1,50 +1,164 @@
-# Welcome to your Expo app 👋
+# # Conch Social 🐚
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A production-grade **cross-platform mobile messenger** built with **React Native + Expo**, designed for **Remote Team Professionals** who collaborate asynchronously across time zones.
 
-## Get started
+## Features
 
-1. Install dependencies
+### MVP (Current)
+- ✅ Email/password authentication
+- ✅ Real-time messaging with Firestore
+- ✅ 1:1 and group conversations
+- ✅ User discovery and search
+- ✅ Cross-platform (iOS, Android, Web)
+- ✅ Modern UI with tab navigation
 
-   ```bash
-   npm install
-   ```
+### Coming Soon
+- 🔄 Offline message queue and caching
+- 🔄 Image and file attachments
+- 🔄 Push notifications
+- 🔄 Message delivery and read receipts
+- 🔄 AI-powered features:
+  - Thread summaries
+  - Action item extraction
+  - Decision tracking
+  - Priority detection
+- 🔄 Proactive scheduling assistant with calendar integration
 
-2. Start the app
+## Tech Stack
 
-   ```bash
-   npx expo start
-   ```
+- **Frontend:** React Native (Expo SDK 54), TypeScript
+- **Backend:** Firebase (Auth, Firestore, Storage, Functions)
+- **State Management:** Zustand
+- **Navigation:** Expo Router
+- **UI:** React Native core components with custom styling
 
-In the output, you'll find options to open the app in a
+## Quick Start
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### 1. Install Dependencies
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Install Required Packages
 
-## Learn more
+```bash
+npm install firebase zustand @react-native-async-storage/async-storage expo-image-picker date-fns
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+### 3. Firebase Setup
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+See **[SETUP.md](./SETUP.md)** for detailed Firebase configuration instructions.
 
-## Join the community
+Quick steps:
+1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
+2. Enable Authentication (Email/Password, Google)
+3. Create Firestore Database
+4. Enable Cloud Storage
+5. Copy your Firebase config to `.env` file
 
-Join our community of developers creating universal apps.
+### 4. Run the App
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+npm start
+```
+
+Then press:
+- `i` for iOS Simulator
+- `a` for Android Emulator
+- `w` for Web browser
+
+## Project Structure
+
+```
+conch/
+├── app/                    # Expo Router screens
+│   ├── (auth)/            # Authentication (login, signup)
+│   ├── (tabs)/            # Main tabs (chats, discover, profile)
+│   └── chat/[id].tsx      # Chat screen
+├── components/            # Reusable UI components
+├── contexts/              # React contexts (AuthContext)
+├── hooks/                 # Custom hooks (useAuth, useMessages)
+├── lib/                   # Firebase configuration
+├── services/              # Firebase services (auth, firestore)
+├── stores/                # Zustand stores (auth, chat, UI)
+├── types/                 # TypeScript type definitions
+└── memory-bank/           # Project documentation
+```
+
+## Development
+
+### Running Tests
+```bash
+npm test
+```
+
+### Linting
+```bash
+npm run lint
+```
+
+### Type Checking
+```bash
+npx tsc --noEmit
+```
+
+## Documentation
+
+- **[SETUP.md](./SETUP.md)** - Complete setup guide
+- **[docs/PRD.md](./docs/PRD.md)** - Product Requirements Document
+- **[memory-bank/](./memory-bank/)** - Project memory and context
+
+## Architecture
+
+### State Management (Zustand)
+- `authStore` - User authentication state
+- `chatStore` - Conversations and messages
+- `uiStore` - UI state (modals, loading, toasts)
+
+### Data Flow
+```
+User Action → Hook → Service → Firebase → Real-time Listener → Store → UI Update
+```
+
+### Key Patterns
+- Real-time sync with Firestore listeners
+- Optimistic UI updates for messages
+- Protected routes with auth guards
+- Offline-first design (coming soon)
+
+## Contributing
+
+1. Check the memory bank for project context
+2. Follow the established patterns
+3. Update documentation when making changes
+4. Test on iOS, Android, and Web
+
+## Roadmap
+
+### Phase 1: MVP ✅ (Current)
+- Basic authentication
+- Real-time messaging
+- User discovery
+
+### Phase 2: Core Features (Next)
+- Offline support
+- Push notifications
+- AI summaries and actions
+
+### Phase 3: Advanced (Future)
+- Calendar integration
+- Meeting scheduling assistant
+- Advanced AI features
+
+## License
+
+MIT
+
+## Support
+
+For setup help, see [SETUP.md](./SETUP.md) or check the Firebase Console for errors.
+
+---
+
+Built with ❤️ using React Native, Expo, and Firebase
