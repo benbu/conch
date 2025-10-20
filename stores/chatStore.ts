@@ -13,6 +13,7 @@ interface ChatStore {
   messages: Record<string, Message[]>; // Keyed by conversationId
   messageLoading: Record<string, boolean>; // Per-conversation loading state
   conversationParticipants: Record<string, User[]>; // Cached participants per conversation
+  computedConversationNames: Record<string, string>; // Derived display names per conversation
   
   // Actions - Conversations
   setConversations: (conversations: Conversation[]) => void;
@@ -29,6 +30,7 @@ interface ChatStore {
   
   // Actions - Participants
   setConversationParticipants: (conversationId: string, participants: User[]) => void;
+  setComputedConversationName: (conversationId: string, name: string) => void;
   
   // Utility actions
   clearChat: () => void;
@@ -47,6 +49,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   messages: {},
   messageLoading: {},
   conversationParticipants: {},
+  computedConversationNames: {},
 
   // Conversation actions
   setConversations: (conversations) => set({ conversations }),
@@ -145,6 +148,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       },
     })),
 
+  setComputedConversationName: (conversationId, name) =>
+    set((state) => ({
+      computedConversationNames: {
+        ...state.computedConversationNames,
+        [conversationId]: name,
+      },
+    })),
+
   // Utility
   clearChat: () =>
     set({
@@ -153,6 +164,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       messages: {},
       messageLoading: {},
       conversationParticipants: {},
+      computedConversationNames: {},
     }),
 
   // Getters (these are functions, not reactive)
