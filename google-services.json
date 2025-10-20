@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "222266867045",
+    "project_id": "conch-7705c",
+    "storage_bucket": "conch-7705c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:222266867045:android:065eca2b1112350ab3b58c",
+        "android_client_info": {
+          "package_name": "social.conch.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "222266867045-mt0nmnm42cvgpcesbik6h1pge2jd3idb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPQTJQW2alYERHZ_s0xTupXhYVsTkgRpM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "222266867045-mt0nmnm42cvgpcesbik6h1pge2jd3idb.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "222266867045-8at2p1hdrlqcjlip8n12tl9n4lgbj56e.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.conch.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
