@@ -4,7 +4,7 @@ export interface User {
   id: string;
   email: string;
   displayName: string;
-  photoURL?: string;
+  photoURL?: string | null;
   timeZone: string;
   workHours?: {
     start: string; // HH:mm format

@@ -1,14 +1,14 @@
 // Authentication service with Firebase
 import {
-    createUserWithEmailAndPassword,
-    User as FirebaseUser,
-    GoogleAuthProvider,
-    onAuthStateChanged,
-    sendPasswordResetEmail,
-    signInWithEmailAndPassword,
-    signInWithPopup,
-    signOut,
-    updateProfile
+  createUserWithEmailAndPassword,
+  User as FirebaseUser,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseDB } from '../lib/firebase';
@@ -38,7 +38,7 @@ export async function signUpWithEmail(
       id: firebaseUser.uid,
       email: firebaseUser.email!,
       displayName,
-      photoURL: firebaseUser.photoURL || undefined,
+      photoURL: firebaseUser.photoURL || null,
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -65,10 +65,22 @@ export async function signInWithEmail(
     const firebaseUser = userCredential.user;
 
     // Fetch user document from Firestore
-    const user = await getUserById(firebaseUser.uid);
+    let user = await getUserById(firebaseUser.uid);
     
+    // If user document doesn't exist, create it (recovery mechanism)
     if (!user) {
-      throw new Error('User document not found');
+      console.log('User document not found, creating one...');
+      user = {
+        id: firebaseUser.uid,
+        email: firebaseUser.email!,
+        displayName: firebaseUser.displayName || 'User',
+        photoURL: firebaseUser.photoURL || null,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      await setDoc(doc(db, 'users', user.id), user);
     }
 
     return user;
@@ -79,16 +91,13 @@ export async function signInWithEmail(
 }
 
 /**
- * Sign in with Google
+ * Sign in with Google using ID token
+ * This is called after getting the ID token from expo-auth-session
  */
-export async function signInWithGoogle(): Promise<User> {
+export async function signInWithGoogleIdToken(idToken: string): Promise<User> {
   try {
-    const provider = new GoogleAuthProvider();
-    
-    // Use popup for web, redirect for mobile
-    // Note: For React Native, you'll need to use a different approach
-    // such as expo-auth-session or firebase/react-native-firebase
-    const userCredential = await signInWithPopup(auth, provider);
+    const credential = GoogleAuthProvider.credential(idToken);
+    const userCredential = await signInWithCredential(auth, credential);
     const firebaseUser = userCredential.user;
 
     // Check if user document exists
@@ -100,7 +109,7 @@ export async function signInWithGoogle(): Promise<User> {
         id: firebaseUser.uid,
         email: firebaseUser.email!,
         displayName: firebaseUser.displayName || 'Anonymous',
-        photoURL: firebaseUser.photoURL || undefined,
+        photoURL: firebaseUser.photoURL || null,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -114,6 +123,17 @@ export async function signInWithGoogle(): Promise<User> {
     console.error('Error signing in with Google:', error);
     throw new Error(error.message || 'Failed to sign in with Google');
   }
+}
+
+/**
+ * Sign in with Google (legacy method - now throws error)
+ * Use the hook useGoogleAuth() instead in your components
+ */
+export async function signInWithGoogle(): Promise<User> {
+  throw new Error(
+    'signInWithGoogle() is not supported in React Native. ' +
+    'Please use the useGoogleAuth() hook in your component instead.'
+  );
 }
 
 /**

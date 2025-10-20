@@ -1,12 +1,11 @@
 // Custom authentication hook
 import { useCallback } from 'react';
 import {
-    sendPasswordReset,
-    signInWithEmail,
-    signInWithGoogle,
-    signOutUser,
-    signUpWithEmail,
-    updateUserProfile,
+  sendPasswordReset,
+  signInWithEmail,
+  signOutUser,
+  signUpWithEmail,
+  updateUserProfile,
 } from '../services/authService';
 import { selectAuthLoading, selectIsAuthenticated, selectUser, useAuthStore } from '../stores/authStore';
 
@@ -55,17 +54,13 @@ export function useAuth() {
   const signInGoogle = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
-      const user = await signInWithGoogle();
-      setUser(user);
-      return user;
-    } catch (error: any) {
-      setError(error.message);
-      throw error;
+      const errorMessage = 'Google Sign-In is not yet configured for React Native. Please use email/password authentication or configure expo-auth-session.';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [setUser, setError, setLoading]);
+  }, [setError, setLoading]);
 
   const signOut = useCallback(async () => {
     try {
