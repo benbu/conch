@@ -5,10 +5,10 @@
 
 import { auth } from '../lib/firebase';
 import {
-  AISummary,
-  AIActions,
-  AIDecision,
-  AIPriority,
+    AIActions,
+    AIDecision,
+    AIPriority,
+    AISummary,
 } from '../types';
 
 const FUNCTIONS_BASE_URL = process.env.EXPO_PUBLIC_FUNCTIONS_URL || 'https://us-central1-YOUR-PROJECT-ID.cloudfunctions.net';

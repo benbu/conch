@@ -3,18 +3,18 @@
  * Manage AI features and permissions
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Stack } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Switch,
-  TouchableOpacity,
-  Alert,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { Stack, router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AI_SETTINGS_KEY = 'ai_settings';
 

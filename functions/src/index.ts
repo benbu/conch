@@ -5,14 +5,17 @@
 
 import * as admin from 'firebase-admin';
 import { onRequest } from 'firebase-functions/v2/https';
-import { authenticateRequest, verifyConversationAccess } from './middleware/auth';
-import { summarizeThread } from './ai/summarizeThread';
-import { extractActions } from './ai/extractActions';
-import { trackDecision } from './ai/trackDecision';
 import { detectPriority } from './ai/detectPriority';
+import { extractActions } from './ai/extractActions';
+import { summarizeThread } from './ai/summarizeThread';
+import { trackDecision } from './ai/trackDecision';
+import { authenticateRequest, verifyConversationAccess } from './middleware/auth';
 
 // Initialize Firebase Admin
 admin.initializeApp();
+
+// Export triggers
+export { onMessageCreated } from './triggers/onMessageCreated';
 
 /**
  * Thread Summary Function

@@ -3,8 +3,8 @@
  * Hook for extracting and managing action items
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { extractActions, aiCacheService } from '../services/aiService';
+import { useCallback, useEffect, useState } from 'react';
+import { aiCacheService, extractActions } from '../services/aiService';
 import { AIActions } from '../types';
 
 interface UseAIActionsOptions {
