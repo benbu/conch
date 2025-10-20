@@ -9,10 +9,12 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { clearChat } = useChatStore();
+  const router = useRouter();
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -78,7 +80,10 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.section}>
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => router.push('/(tabs)/edit-profile')}
+        >
           <Text style={styles.menuItemText}>Edit Profile</Text>
           <Text style={styles.menuItemChevron}>›</Text>
         </TouchableOpacity>
