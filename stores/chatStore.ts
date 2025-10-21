@@ -1,6 +1,6 @@
 // Chat and messaging store using Zustand
 import { create } from 'zustand';
-import { Conversation, Message, User } from '../types';
+import { Conversation, ConversationMember, Message, User } from '../types';
 
 // Stable fallbacks to avoid returning new references on every selector read
 const EMPTY_MESSAGES: Message[] = [];
@@ -31,6 +31,12 @@ interface ChatStore {
   // Actions - Participants
   setConversationParticipants: (conversationId: string, participants: User[]) => void;
   setComputedConversationName: (conversationId: string, name: string) => void;
+  
+  // Actions - Group Member Management
+  updateConversationName: (conversationId: string, name: string) => void;
+  addConversationMember: (conversationId: string, member: ConversationMember) => void;
+  updateConversationMemberRole: (conversationId: string, userId: string, role: 'admin' | 'team' | 'user') => void;
+  removeConversationMember: (conversationId: string, userId: string) => void;
   
   // Utility actions
   clearChat: () => void;
@@ -154,6 +160,55 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         ...state.computedConversationNames,
         [conversationId]: name,
       },
+    })),
+
+  // Group Member Management
+  updateConversationName: (conversationId, name) =>
+    set((state) => ({
+      conversations: state.conversations.map((conv) =>
+        conv.id === conversationId ? { ...conv, name } : conv
+      ),
+    })),
+
+  addConversationMember: (conversationId, member) =>
+    set((state) => ({
+      conversations: state.conversations.map((conv) => {
+        if (conv.id !== conversationId) return conv;
+        
+        const members = conv.members || [];
+        const participantIds = conv.participantIds || [];
+        
+        return {
+          ...conv,
+          members: [...members, member],
+          participantIds: [...participantIds, member.userId],
+        };
+      }),
+    })),
+
+  updateConversationMemberRole: (conversationId, userId, role) =>
+    set((state) => ({
+      conversations: state.conversations.map((conv) => {
+        if (conv.id !== conversationId) return conv;
+        
+        const members = (conv.members || []).map((m) =>
+          m.userId === userId ? { ...m, role } : m
+        );
+        
+        return { ...conv, members };
+      }),
+    })),
+
+  removeConversationMember: (conversationId, userId) =>
+    set((state) => ({
+      conversations: state.conversations.map((conv) => {
+        if (conv.id !== conversationId) return conv;
+        
+        const members = (conv.members || []).filter((m) => m.userId !== userId);
+        const participantIds = (conv.participantIds || []).filter((id) => id !== userId);
+        
+        return { ...conv, members, participantIds };
+      }),
     })),
 
   // Utility

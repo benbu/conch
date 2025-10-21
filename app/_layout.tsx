@@ -1,12 +1,18 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import 'react-native-reanimated';
 
+import { InAppNotification } from '@/components/InAppNotification';
 import { AuthProvider, useAuthContext } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useNotifications } from '@/hooks/useNotifications';
+import {
+  startMessageNotificationListener,
+  stopMessageNotificationListener,
+} from '@/services/messageNotificationService';
 import {
   setUserAway,
   setUserOnline,
@@ -29,6 +35,15 @@ function RootNavigator() {
   const router = useRouter();
   const awayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const appState = useRef<AppStateStatus>(AppState.currentState);
+  
+  // In-app notification state
+  const { notification } = useNotifications();
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationData, setNotificationData] = useState<{
+    title: string;
+    message: string;
+    conversationId: string;
+  } | null>(null);
 
   // Handle navigation based on auth state
   useEffect(() => {
@@ -45,7 +60,34 @@ function RootNavigator() {
     }
   }, [user, initialized, loading, segments]);
 
-  // Handle presence tracking based on app lifecycle
+  // Handle in-app notifications
+  useEffect(() => {
+    if (!notification) return;
+
+    const data = notification.request.content.data;
+    const conversationId = data?.conversationId as string | undefined;
+    
+    if (!conversationId) return;
+
+    // Don't show notification if user is currently viewing this conversation
+    const currentConversationId = segments[segments.length - 1];
+    if (segments[0] === 'chat' && currentConversationId === conversationId) {
+      return;
+    }
+
+    // Show in-app notification
+    const title = notification.request.content.title || 'New Message';
+    const message = notification.request.content.body || '';
+    
+    setNotificationData({
+      title,
+      message,
+      conversationId,
+    });
+    setShowNotification(true);
+  }, [notification, segments]);
+
+  // Handle presence tracking and message notifications based on app lifecycle
   useEffect(() => {
     if (!user) return;
 
@@ -53,6 +95,10 @@ function RootNavigator() {
     startPresenceTracking(user.id, user.appearOffline || false).catch((error) => {
       console.error('Failed to start presence tracking:', error);
     });
+
+    // Start listening for new messages (for in-app notifications in Expo Go)
+    // In production builds with FCM, this provides a fallback
+    startMessageNotificationListener();
 
     // Handle app state changes
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
@@ -98,8 +144,20 @@ function RootNavigator() {
         clearTimeout(awayTimerRef.current);
       }
       stopPresenceTracking(user.id).catch(console.error);
+      stopMessageNotificationListener();
     };
   }, [user]);
+
+  // Handle notification navigation
+  const handleNotificationPress = () => {
+    if (notificationData?.conversationId) {
+      router.push(`/chat/${notificationData.conversationId}`);
+    }
+  };
+
+  const handleNotificationDismiss = () => {
+    setShowNotification(false);
+  };
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -110,6 +168,18 @@ function RootNavigator() {
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Settings' }} />
       </Stack>
       <StatusBar style="auto" />
+      
+      {/* In-app notification banner */}
+      {notificationData && (
+        <InAppNotification
+          visible={showNotification}
+          title={notificationData.title}
+          message={notificationData.message}
+          conversationId={notificationData.conversationId}
+          onPress={handleNotificationPress}
+          onDismiss={handleNotificationDismiss}
+        />
+      )}
     </ThemeProvider>
   );
 }

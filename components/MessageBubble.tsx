@@ -7,11 +7,13 @@ import { Message } from '../types';
 interface MessageBubbleProps {
   message: Message;
   isOwn: boolean;
+  showAvatar?: boolean;
+  avatarUrl?: string | null;
   onImagePress?: (imageUrl: string) => void;
   onRetry?: (messageId: string) => void;
 }
 
-export function MessageBubble({ message, isOwn, onImagePress, onRetry }: MessageBubbleProps) {
+export function MessageBubble({ message, isOwn, showAvatar, avatarUrl, onImagePress, onRetry }: MessageBubbleProps) {
   const renderStatusIcon = () => {
     switch (message.deliveryStatus) {
       case 'sending':
@@ -33,7 +35,17 @@ export function MessageBubble({ message, isOwn, onImagePress, onRetry }: Message
     }
   };
 
-  return (
+  // Get initials for placeholder avatar
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const messageContent = (
     <View
       style={[
         styles.messageBubble,
@@ -85,18 +97,84 @@ export function MessageBubble({ message, isOwn, onImagePress, onRetry }: Message
       )}
     </View>
   );
+
+  // For own messages or when no avatar should be shown
+  if (isOwn) {
+    return messageContent;
+  }
+
+  // For other users' messages with avatar layout
+  return (
+    <View style={styles.messageRow}>
+      {/* Avatar or spacer */}
+      <View style={styles.avatarContainer}>
+        {showAvatar ? (
+          avatarUrl ? (
+            <Image
+              source={{ uri: avatarUrl }}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Text style={styles.avatarInitials}>
+                {message.sender?.displayName ? getInitials(message.sender.displayName) : '?'}
+              </Text>
+            </View>
+          )
+        ) : (
+          <View style={styles.avatarSpacer} />
+        )}
+      </View>
+      {messageContent}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: 8,
+  },
+  avatarContainer: {
+    width: 40,
+    height: 40,
+    marginRight: 8,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E0E0E0',
+  },
+  avatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitials: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  avatarSpacer: {
+    width: 40,
+    height: 40,
+  },
   messageBubble: {
     maxWidth: '75%',
     padding: 12,
     borderRadius: 16,
-    marginBottom: 8,
+    marginBottom: 0,
   },
   ownMessage: {
     alignSelf: 'flex-end',
     backgroundColor: '#007AFF',
+    marginBottom: 8,
   },
   otherMessage: {
     alignSelf: 'flex-start',

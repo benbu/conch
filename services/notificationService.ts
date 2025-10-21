@@ -6,6 +6,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import { doc, updateDoc } from 'firebase/firestore';
 import { Platform } from 'react-native';
 import { auth, db } from '../lib/firebase';
 
@@ -17,6 +18,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -55,8 +58,10 @@ export async function registerForPushNotifications(): Promise<string | null> {
       return null;
     }
 
-    // Get push token
-    const token = (await Notifications.getExpoPushTokenAsync()).data;
+    // Get device push token (FCM token for Android, APNs token for iOS)
+    // Note: This will not work in Expo Go (SDK 53+), but works in development/production builds
+    const pushTokenData = await Notifications.getDevicePushTokenAsync();
+    const token = pushTokenData.data;
     
     // Save token locally
     await AsyncStorage.setItem(FCM_TOKEN_KEY, token);
@@ -64,7 +69,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
     // Register token with Firestore
     const user = auth.currentUser;
     if (user) {
-      await db.collection('users').doc(user.uid).update({
+      await updateDoc(doc(db, 'users', user.uid), {
         fcmToken: token,
         fcmTokenUpdatedAt: new Date(),
         platform: Platform.OS,
@@ -74,7 +79,13 @@ export async function registerForPushNotifications(): Promise<string | null> {
     console.log('Push notification token registered:', token);
     return token;
   } catch (error) {
-    console.error('Error registering for push notifications:', error);
+    // Gracefully handle Expo Go limitation or other errors
+    const errorMessage = (error as Error).message || '';
+    if (errorMessage.includes('Expo Go') || errorMessage.includes('development build')) {
+      console.warn('⚠️ Push notifications require a development build. In-app notifications will still work for testing.');
+    } else {
+      console.error('Error registering for push notifications:', error);
+    }
     return null;
   }
 }
@@ -86,7 +97,7 @@ export async function unregisterPushNotifications(): Promise<void> {
   try {
     const user = auth.currentUser;
     if (user) {
-      await db.collection('users').doc(user.uid).update({
+      await updateDoc(doc(db, 'users', user.uid), {
         fcmToken: null,
         fcmTokenUpdatedAt: new Date(),
       });
@@ -165,5 +176,26 @@ export async function cancelNotification(
   notificationId: string
 ): Promise<void> {
   await Notifications.cancelScheduledNotificationAsync(notificationId);
+}
+
+/**
+ * Send test notification (for development/testing in Expo Go)
+ * This triggers a local notification to test the in-app notification UI
+ */
+export async function sendTestNotification(
+  title: string = 'Test Message',
+  body: string = 'This is a test notification to verify in-app notifications work!',
+  conversationId: string = 'test-conversation-id'
+): Promise<void> {
+  try {
+    await scheduleLocalNotification(title, body, {
+      conversationId,
+      senderId: 'test-sender',
+      messageId: 'test-message',
+    });
+    console.log('✅ Test notification sent');
+  } catch (error) {
+    console.error('Error sending test notification:', error);
+  }
 }
 

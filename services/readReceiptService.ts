@@ -3,6 +3,7 @@
  * Handles read receipts and message status tracking
  */
 
+import { collection, doc, getDocs, query, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 /**
@@ -16,13 +17,9 @@ export async function markMessageAsRead(
     const user = auth.currentUser;
     if (!user) return;
 
-    const messageRef = db
-      .collection('conversations')
-      .doc(conversationId)
-      .collection('messages')
-      .doc(messageId);
+    const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
 
-    await messageRef.update({
+    await updateDoc(messageRef, {
       [`readBy.${user.uid}`]: new Date(),
     });
   } catch (error) {
@@ -40,19 +37,19 @@ export async function markConversationAsRead(
     const user = auth.currentUser;
     if (!user) return;
 
-    const messagesSnapshot = await db
-      .collection('conversations')
-      .doc(conversationId)
-      .collection('messages')
-      .where('senderId', '!=', user.uid)
-      .where(`readBy.${user.uid}`, '==', null)
-      .get();
+    const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+    const q = query(
+      messagesRef,
+      where('senderId', '!=', user.uid),
+      where(`readBy.${user.uid}`, '==', null)
+    );
+    const messagesSnapshot = await getDocs(q);
 
-    const batch = db.batch();
+    const batch = writeBatch(db);
     const now = new Date();
 
-    messagesSnapshot.docs.forEach((doc) => {
-      batch.update(doc.ref, {
+    messagesSnapshot.docs.forEach((docSnap) => {
+      batch.update(docSnap.ref, {
         [`readBy.${user.uid}`]: now,
       });
     });
@@ -73,13 +70,13 @@ export async function getUnreadCount(
     const user = auth.currentUser;
     if (!user) return 0;
 
-    const messagesSnapshot = await db
-      .collection('conversations')
-      .doc(conversationId)
-      .collection('messages')
-      .where('senderId', '!=', user.uid)
-      .where(`readBy.${user.uid}`, '==', null)
-      .get();
+    const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+    const q = query(
+      messagesRef,
+      where('senderId', '!=', user.uid),
+      where(`readBy.${user.uid}`, '==', null)
+    );
+    const messagesSnapshot = await getDocs(q);
 
     return messagesSnapshot.size;
   } catch (error) {
@@ -97,10 +94,12 @@ export async function getTotalUnreadCount(): Promise<number> {
     if (!user) return 0;
 
     // Get all conversations user is part of
-    const conversationsSnapshot = await db
-      .collection('conversations')
-      .where('participantIds', 'array-contains', user.uid)
-      .get();
+    const conversationsRef = collection(db, 'conversations');
+    const q = query(
+      conversationsRef,
+      where('participantIds', 'array-contains', user.uid)
+    );
+    const conversationsSnapshot = await getDocs(q);
 
     let totalUnread = 0;
 

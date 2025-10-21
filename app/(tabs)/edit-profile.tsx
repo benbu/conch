@@ -7,6 +7,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { auth, db } from '@/lib/firebase';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, router } from 'expo-router';
+import { updateProfile } from 'firebase/auth';
+import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
@@ -54,17 +56,19 @@ export default function EditProfileScreen() {
 
     try {
       // Update Firebase Auth profile
-      await auth.currentUser?.updateProfile({
-        displayName: displayName.trim(),
-        photoURL: photoURL || null,
-      });
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, {
+          displayName: displayName.trim(),
+          photoURL: photoURL || null,
+        });
+      }
 
       // Update Firestore user document
-      await db.collection('users').doc(user.id).update({
+      await updateDoc(doc(db, 'users', user.id), {
         displayName: displayName.trim(),
         photoURL: photoURL || null,
         bio: bio.trim(),
-        updatedAt: new Date(),
+        updatedAt: serverTimestamp(),
       });
 
       Alert.alert('Success', 'Profile updated successfully');
