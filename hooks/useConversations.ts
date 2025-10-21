@@ -1,10 +1,14 @@
 // Custom hook for conversations
 import { useCallback, useEffect } from 'react';
 import {
-  createConversation,
-  getMessages,
-  getUsersByIds,
-  subscribeToConversations,
+    addMemberToConversation,
+    createConversation,
+    getMessages,
+    getUsersByIds,
+    removeMemberFromConversation,
+    subscribeToConversations,
+    updateConversationName,
+    updateMemberRole,
 } from '../services/firestoreService';
 import { selectUser, useAuthStore } from '../stores/authStore';
 import { selectConversations, useChatStore } from '../stores/chatStore';
@@ -72,7 +76,8 @@ export function useConversations() {
     async (
       participantIds: string[],
       title?: string,
-      type: 'direct' | 'group' = 'direct'
+      type: 'direct' | 'group' = 'direct',
+      name?: string
     ) => {
       if (!user) {
         throw new Error('User must be logged in');
@@ -83,7 +88,8 @@ export function useConversations() {
           [...participantIds, user.id], // Include current user
           user.id,
           title,
-          type
+          type,
+          name
         );
 
         return conversationId;
@@ -95,9 +101,87 @@ export function useConversations() {
     [user]
   );
 
+  const updateGroupName = useCallback(
+    async (conversationId: string, name: string) => {
+      try {
+        await updateConversationName(conversationId, name);
+        useChatStore.getState().updateConversationName(conversationId, name);
+      } catch (error: any) {
+        console.error('Error updating group name:', error);
+        throw error;
+      }
+    },
+    []
+  );
+
+  const addGroupMember = useCallback(
+    async (conversationId: string, userId: string, role: 'admin' | 'team' | 'user' = 'user') => {
+      try {
+        await addMemberToConversation(conversationId, userId, role);
+        useChatStore.getState().addConversationMember(conversationId, {
+          userId,
+          role,
+          joinedAt: new Date(),
+        });
+      } catch (error: any) {
+        console.error('Error adding member:', error);
+        throw error;
+      }
+    },
+    []
+  );
+
+  const updateMemberRoleInGroup = useCallback(
+    async (conversationId: string, userId: string, newRole: 'admin' | 'team' | 'user') => {
+      try {
+        await updateMemberRole(conversationId, userId, newRole);
+        useChatStore.getState().updateConversationMemberRole(conversationId, userId, newRole);
+      } catch (error: any) {
+        console.error('Error updating member role:', error);
+        throw error;
+      }
+    },
+    []
+  );
+
+  const leaveGroup = useCallback(
+    async (conversationId: string) => {
+      if (!user) {
+        throw new Error('User must be logged in');
+      }
+
+      try {
+        await removeMemberFromConversation(conversationId, user.id);
+        useChatStore.getState().removeConversationMember(conversationId, user.id);
+      } catch (error: any) {
+        console.error('Error leaving group:', error);
+        throw error;
+      }
+    },
+    [user]
+  );
+
+  const removeMember = useCallback(
+    async (conversationId: string, userId: string) => {
+      try {
+        await removeMemberFromConversation(conversationId, userId);
+        useChatStore.getState().removeConversationMember(conversationId, userId);
+      } catch (error: any) {
+        console.error('Error removing member:', error);
+        throw error;
+      }
+    },
+    []
+  );
+
   return {
     conversations,
     createConversation: createNewConversation,
+    updateGroupName,
+    addGroupMember,
+    updateMemberRole: updateMemberRoleInGroup,
+    leaveGroup,
+    removeMember,
   };
 }
 

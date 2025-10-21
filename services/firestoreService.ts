@@ -1,6 +1,8 @@
 // Firestore service for conversations and messages
 import {
   addDoc,
+  arrayRemove,
+  arrayUnion,
   collection,
   doc,
   getDoc,
@@ -27,13 +29,25 @@ export async function createConversation(
   participantIds: string[],
   createdBy: string,
   title?: string,
-  type: 'direct' | 'group' = 'direct'
+  type: 'direct' | 'group' = 'direct',
+  name?: string
 ): Promise<string> {
   try {
-    const conversationData = {
+    // Create members array with roles
+    // Note: Using new Date() instead of serverTimestamp() because Firestore doesn't support serverTimestamp() in arrays
+    const now = new Date();
+    const members = participantIds.map((userId) => ({
+      userId,
+      role: userId === createdBy ? 'admin' : 'user',
+      joinedAt: now,
+    }));
+
+    const conversationData: any = {
       title: title || null,
+      name: name || null,
       type,
       participantIds,
+      members,
       createdBy,
       createdAt: serverTimestamp(),
       lastMessageAt: serverTimestamp(),
@@ -65,8 +79,14 @@ export async function getUserConversations(userId: string): Promise<Conversation
       return {
         id: doc.id,
         title: data.title,
+        name: data.name,
         type: data.type,
         participantIds: data.participantIds,
+        members: data.members?.map((m: any) => ({
+          userId: m.userId,
+          role: m.role,
+          joinedAt: m.joinedAt?.toDate?.() || new Date(),
+        })),
         createdBy: data.createdBy,
         createdAt: data.createdAt?.toDate() || new Date(),
         lastMessageAt: data.lastMessageAt?.toDate() || new Date(),
@@ -101,8 +121,14 @@ export function subscribeToConversations(
       return {
         id: doc.id,
         title: data.title,
+        name: data.name,
         type: data.type,
         participantIds: data.participantIds,
+        members: data.members?.map((m: any) => ({
+          userId: m.userId,
+          role: m.role,
+          joinedAt: m.joinedAt?.toDate?.() || new Date(),
+        })),
         createdBy: data.createdBy,
         createdAt: data.createdAt?.toDate() || new Date(),
         lastMessageAt: data.lastMessageAt?.toDate() || new Date(),
@@ -354,10 +380,145 @@ export async function getUsersByIds(userIds: string[]): Promise<User[]> {
     });
 
     const results = await Promise.all(promises);
-    return results.filter((user): user is User => user !== null);
+    return results.filter((user) => user !== null) as User[];
   } catch (error: any) {
     console.error('Error fetching users:', error);
     throw new Error(error.message || 'Failed to fetch users');
+  }
+}
+
+// ===== Group Member Management =====
+
+/**
+ * Update conversation name (group chats only)
+ */
+export async function updateConversationName(
+  conversationId: string,
+  name: string
+): Promise<void> {
+  try {
+    await updateDoc(doc(db, 'conversations', conversationId), {
+      name,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error: any) {
+    console.error('Error updating conversation name:', error);
+    throw new Error(error.message || 'Failed to update conversation name');
+  }
+}
+
+/**
+ * Add a member to a conversation
+ */
+export async function addMemberToConversation(
+  conversationId: string,
+  userId: string,
+  role: 'admin' | 'team' | 'user' = 'user'
+): Promise<void> {
+  try {
+    // Note: Using new Date() instead of serverTimestamp() because Firestore doesn't support serverTimestamp() in arrays
+    const newMember = {
+      userId,
+      role,
+      joinedAt: new Date(),
+    };
+
+    await updateDoc(doc(db, 'conversations', conversationId), {
+      participantIds: arrayUnion(userId),
+      members: arrayUnion(newMember),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error: any) {
+    console.error('Error adding member:', error);
+    throw new Error(error.message || 'Failed to add member');
+  }
+}
+
+/**
+ * Update a member's role in a conversation
+ */
+export async function updateMemberRole(
+  conversationId: string,
+  userId: string,
+  newRole: 'admin' | 'team' | 'user'
+): Promise<void> {
+  try {
+    // Get current conversation
+    const convDoc = await getDoc(doc(db, 'conversations', conversationId));
+    if (!convDoc.exists()) {
+      throw new Error('Conversation not found');
+    }
+
+    const data = convDoc.data();
+    const members = data.members || [];
+    
+    // Update the specific member's role
+    const updatedMembers = members.map((m: any) =>
+      m.userId === userId ? { ...m, role: newRole } : m
+    );
+
+    await updateDoc(doc(db, 'conversations', conversationId), {
+      members: updatedMembers,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error: any) {
+    console.error('Error updating member role:', error);
+    throw new Error(error.message || 'Failed to update member role');
+  }
+}
+
+/**
+ * Remove a member from a conversation
+ */
+export async function removeMemberFromConversation(
+  conversationId: string,
+  userId: string
+): Promise<void> {
+  try {
+    // Get current conversation
+    const convDoc = await getDoc(doc(db, 'conversations', conversationId));
+    if (!convDoc.exists()) {
+      throw new Error('Conversation not found');
+    }
+
+    const data = convDoc.data();
+    const members = data.members || [];
+    
+    // Remove the member
+    const updatedMembers = members.filter((m: any) => m.userId !== userId);
+
+    await updateDoc(doc(db, 'conversations', conversationId), {
+      participantIds: arrayRemove(userId),
+      members: updatedMembers,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error: any) {
+    console.error('Error removing member:', error);
+    throw new Error(error.message || 'Failed to remove member');
+  }
+}
+
+/**
+ * Get a user's role in a conversation
+ */
+export async function getUserRole(
+  conversationId: string,
+  userId: string
+): Promise<'admin' | 'team' | 'user' | null> {
+  try {
+    const convDoc = await getDoc(doc(db, 'conversations', conversationId));
+    if (!convDoc.exists()) {
+      return null;
+    }
+
+    const data = convDoc.data();
+    const members = data.members || [];
+    const member = members.find((m: any) => m.userId === userId);
+    
+    return member?.role || null;
+  } catch (error: any) {
+    console.error('Error getting user role:', error);
+    return null;
   }
 }
 

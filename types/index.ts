@@ -21,12 +21,20 @@ export interface UserPresence {
   customStatus?: string;
 }
 
+export interface ConversationMember {
+  userId: string;
+  role: 'admin' | 'team' | 'user';
+  joinedAt: Date;
+}
+
 export interface Conversation {
   id: string;
   title?: string;
+  name?: string; // Custom editable name for groups
   type: 'direct' | 'group';
   participantIds: string[];
   participants?: User[]; // Populated on client
+  members?: ConversationMember[]; // Role-based member tracking for groups
   createdBy: string;
   createdAt: Date;
   lastMessageAt: Date;

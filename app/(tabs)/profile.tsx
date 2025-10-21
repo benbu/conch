@@ -1,4 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
 import { useChatStore } from '@/stores/chatStore';
 import { useRouter } from 'expo-router';
 import React from 'react';
@@ -15,6 +16,7 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { clearChat } = useChatStore();
   const router = useRouter();
+  const { sendTest } = useNotifications();
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -116,6 +118,23 @@ export default function ProfileScreen() {
 
         <TouchableOpacity style={styles.menuItem}>
           <Text style={styles.menuItemText}>Help & Support</Text>
+          <Text style={styles.menuItemChevron}>›</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Development</Text>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => {
+            sendTest(
+              'John Doe',
+              'Hey! Check out this amazing new feature 🚀',
+              'test-123'
+            );
+          }}
+        >
+          <Text style={styles.menuItemText}>🔔 Test In-App Notification</Text>
           <Text style={styles.menuItemChevron}>›</Text>
         </TouchableOpacity>
       </View>

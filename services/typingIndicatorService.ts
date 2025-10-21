@@ -3,6 +3,7 @@
  * Handles real-time typing indicators
  */
 
+import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 const TYPING_TIMEOUT = 3000; // 3 seconds
@@ -19,20 +20,16 @@ export async function setTyping(
     const user = auth.currentUser;
     if (!user) return;
 
-    const typingRef = db
-      .collection('conversations')
-      .doc(conversationId)
-      .collection('typing')
-      .doc(user.uid);
+    const typingRef = doc(db, 'conversations', conversationId, 'typing', user.uid);
 
     if (isTyping) {
-      await typingRef.set({
+      await setDoc(typingRef, {
         userId: user.uid,
         displayName: user.displayName || 'Someone',
         timestamp: new Date(),
       });
     } else {
-      await typingRef.delete();
+      await deleteDoc(typingRef);
     }
   } catch (error) {
     console.error('Error setting typing indicator:', error);
@@ -81,26 +78,24 @@ export function subscribeToTypingIndicators(
     return () => {};
   }
 
-  const unsubscribe = db
-    .collection('conversations')
-    .doc(conversationId)
-    .collection('typing')
-    .onSnapshot((snapshot) => {
-      const typingUsers = snapshot.docs
-        .map((doc) => doc.data() as { userId: string; displayName: string; timestamp: Date })
-        .filter((data) => data.userId !== user.uid) // Exclude current user
-        .filter((data) => {
-          // Filter out stale typing indicators (older than 5 seconds)
-          const age = Date.now() - new Date(data.timestamp).getTime();
-          return age < 5000;
-        })
-        .map((data) => ({
-          userId: data.userId,
-          displayName: data.displayName,
-        }));
+  const typingRef = collection(db, 'conversations', conversationId, 'typing');
+  
+  const unsubscribe = onSnapshot(typingRef, (snapshot) => {
+    const typingUsers = snapshot.docs
+      .map((doc) => doc.data() as { userId: string; displayName: string; timestamp: Date })
+      .filter((data) => data.userId !== user.uid) // Exclude current user
+      .filter((data) => {
+        // Filter out stale typing indicators (older than 5 seconds)
+        const age = Date.now() - new Date(data.timestamp).getTime();
+        return age < 5000;
+      })
+      .map((data) => ({
+        userId: data.userId,
+        displayName: data.displayName,
+      }));
 
-      callback(typingUsers);
-    });
+    callback(typingUsers);
+  });
 
   return unsubscribe;
 }

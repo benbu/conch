@@ -1,3 +1,4 @@
+import OverlappingAvatars from '@/components/OverlappingAvatars';
 import PresenceIndicator from '@/components/PresenceIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
@@ -115,9 +116,11 @@ export default function ChatsScreen() {
     const others = participantsForConv.filter((p: any) => p.id !== user?.id);
     
     if (!displayTitle) {
-      if (others.length > 0) {
-        const full = others.map((u: any) => u.displayName).join(',');
-        displayTitle = full.length <= 30 ? full : others.map((u: any) => u.displayName.slice(0, 5)).join(',');
+      if (item.type === 'group' && item.name) {
+        displayTitle = item.name;
+      } else if (others.length > 0) {
+        const full = others.map((u: any) => u.displayName).join(', ');
+        displayTitle = full.length <= 30 ? full : others.map((u: any) => u.displayName.slice(0, 5)).join(', ');
       } else {
         displayTitle = item.title || (otherParticipants.length > 1 ? `Group (${otherParticipants.length + 1})` : 'Chat');
       }
@@ -125,6 +128,7 @@ export default function ChatsScreen() {
 
     // For direct chats, show presence of the other user
     const otherUser = item.type === 'direct' && others.length > 0 ? others[0] : null;
+    const isGroup = item.type === 'group';
 
     return (
       <TouchableOpacity
@@ -132,22 +136,35 @@ export default function ChatsScreen() {
         style={styles.conversationItem}
         onPress={() => router.push(`/chat/${item.id}`)}
       >
-        <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {displayTitle.charAt(0).toUpperCase()}
-            </Text>
+        {isGroup ? (
+          <View style={styles.groupAvatarContainer}>
+            <OverlappingAvatars
+              members={others.slice(0, 3)}
+              maxVisible={2}
+              size="small"
+            />
           </View>
-          {otherUser && (
-            <View style={styles.presenceDot}>
-              <PresenceIndicator userId={otherUser.id} user={otherUser} size="small" />
+        ) : (
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {displayTitle.charAt(0).toUpperCase()}
+              </Text>
             </View>
-          )}
-        </View>
+            {otherUser && (
+              <View style={styles.presenceDot}>
+                <PresenceIndicator userId={otherUser.id} user={otherUser} size="small" />
+              </View>
+            )}
+          </View>
+        )}
 
         <View style={styles.conversationContent}>
           <View style={styles.conversationHeader}>
-            <Text style={styles.conversationTitle}>{displayTitle}</Text>
+            <Text style={styles.conversationTitle} numberOfLines={1}>
+              {displayTitle}
+              {isGroup && ` (${item.participantIds.length})`}
+            </Text>
             {item.lastMessageAt && (
               <Text style={styles.timestamp}>
                 {format(item.lastMessageAt, 'MMM d')}
@@ -419,6 +436,10 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: 'relative',
     marginRight: 12,
+  },
+  groupAvatarContainer: {
+    marginRight: 12,
+    justifyContent: 'center',
   },
   avatar: {
     width: 50,

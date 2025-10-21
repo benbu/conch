@@ -7,12 +7,13 @@ import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-    addNotificationReceivedListener,
-    addNotificationResponseReceivedListener,
-    getBadgeCount,
-    registerForPushNotifications,
-    setBadgeCount,
-    unregisterPushNotifications,
+  addNotificationReceivedListener,
+  addNotificationResponseReceivedListener,
+  getBadgeCount,
+  registerForPushNotifications,
+  sendTestNotification,
+  setBadgeCount,
+  unregisterPushNotifications,
 } from '../services/notificationService';
 
 export function useNotifications() {
@@ -92,6 +93,13 @@ export function useNotifications() {
     setToken(null);
   }, []);
 
+  /**
+   * Send test notification (for development/testing)
+   */
+  const sendTest = useCallback(async (title?: string, message?: string, conversationId?: string) => {
+    await sendTestNotification(title, message, conversationId);
+  }, []);
+
   return {
     token,
     notification,
@@ -99,6 +107,7 @@ export function useNotifications() {
     updateBadgeCount,
     clearBadge,
     unregister,
+    sendTest,
   };
 }
 

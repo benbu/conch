@@ -1,3 +1,4 @@
+import GroupNameModal from '@/components/GroupNameModal';
 import PresenceIndicator from '@/components/PresenceIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
@@ -9,6 +10,7 @@ import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   SectionList,
   StyleSheet,
   Text,
@@ -27,6 +29,9 @@ export default function ExploreScreen() {
   const [deepSearchResults, setDeepSearchResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasDeepSearched, setHasDeepSearched] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [showGroupNameModal, setShowGroupNameModal] = useState(false);
   
   const { user } = useAuth();
   const { conversations, createConversation } = useConversations();
@@ -51,8 +56,8 @@ export default function ExploreScreen() {
   }, [conversations, participantsByConversation, user]);
 
   // Get recent messages from all conversations for local search
-  const localMessages: Array<{ message: Message; conversationId: string; conversationTitle: string }> = useMemo(() => {
-    const messages: Array<{ message: Message; conversationId: string; conversationTitle: string }> = [];
+  const localMessages = useMemo(() => {
+    const messages: Array<{ message: any; conversationId: string; conversationTitle: string }> = [];
     
     // Get last few messages from each conversation
     for (const conv of conversations) {
@@ -60,7 +65,7 @@ export default function ExploreScreen() {
         messages.push({
           message: conv.lastMessage,
           conversationId: conv.id,
-          conversationTitle: conv.title || 'Chat',
+          conversationTitle: conv.title || conv.name || 'Chat',
         });
       }
     }
@@ -163,23 +168,74 @@ export default function ExploreScreen() {
     return results;
   }, [hasDeepSearched, deepSearchResults, localFilteredResults]);
 
-  const handleUserTap = async (userId: string) => {
+  const toggleUserSelection = (selectedUser: User) => {
+    setSelectedUsers((prev) => {
+      const isSelected = prev.some((u) => u.id === selectedUser.id);
+      if (isSelected) {
+        return prev.filter((u) => u.id !== selectedUser.id);
+      } else {
+        return [...prev, selectedUser];
+      }
+    });
+    
+    if (!isMultiSelectMode) {
+      setIsMultiSelectMode(true);
+    }
+  };
+
+  const handleUserTap = async (selectedUser: User) => {
+    // If in multi-select mode, toggle selection
+    if (isMultiSelectMode) {
+      toggleUserSelection(selectedUser);
+      return;
+    }
+
     try {
       // Find or create conversation with this user
       const existingConv = conversations.find(
-        c => c.type === 'direct' && c.participantIds.includes(userId)
+        c => c.type === 'direct' && c.participantIds.includes(selectedUser.id)
       );
 
       if (existingConv) {
         router.push(`/chat/${existingConv.id}`);
       } else {
         // Create new conversation
-        const convId = await createConversation([userId], undefined, 'direct');
+        const convId = await createConversation([selectedUser.id], undefined, 'direct');
         router.push(`/chat/${convId}`);
       }
     } catch (error) {
       console.error('Failed to open chat:', error);
     }
+  };
+
+  const handleCreateGroup = () => {
+    if (selectedUsers.length < 2) {
+      Alert.alert('Error', 'Please select at least 2 users to create a group');
+      return;
+    }
+    setShowGroupNameModal(true);
+  };
+
+  const handleGroupNameSubmit = async (groupName: string) => {
+    try {
+      const participantIds = selectedUsers.map((u) => u.id);
+      const convId = await createConversation(participantIds, undefined, 'group', groupName);
+      
+      // Reset selection state
+      setSelectedUsers([]);
+      setIsMultiSelectMode(false);
+      
+      // Navigate to new group
+      router.push(`/chat/${convId}`);
+    } catch (error) {
+      console.error('Failed to create group:', error);
+      Alert.alert('Error', 'Failed to create group chat');
+    }
+  };
+
+  const cancelMultiSelect = () => {
+    setSelectedUsers([]);
+    setIsMultiSelectMode(false);
   };
 
   const handleMessageTap = (conversationId: string, messageId: string) => {
@@ -189,11 +245,19 @@ export default function ExploreScreen() {
   const renderResult = ({ item }: { item: SearchResult }) => {
     if (item.type === 'user') {
       const userData = item.data as User;
+      const isSelected = selectedUsers.some((u) => u.id === userData.id);
+      
       return (
         <TouchableOpacity
-          style={styles.resultItem}
-          onPress={() => handleUserTap(userData.id)}
+          style={[styles.resultItem, isSelected && styles.resultItemSelected]}
+          onPress={() => handleUserTap(userData)}
+          onLongPress={() => toggleUserSelection(userData)}
         >
+          {isMultiSelectMode && (
+            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+              {isSelected && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+          )}
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
@@ -208,7 +272,7 @@ export default function ExploreScreen() {
             <Text style={styles.resultTitle}>{userData.displayName}</Text>
             <Text style={styles.resultSubtitle}>{userData.email}</Text>
           </View>
-          <Text style={styles.actionText}>Chat</Text>
+          {!isMultiSelectMode && <Text style={styles.actionText}>Chat</Text>}
         </TouchableOpacity>
       );
     }
@@ -250,6 +314,16 @@ export default function ExploreScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.searchContainer}>
+        {isMultiSelectMode && (
+          <View style={styles.selectionHeader}>
+            <TouchableOpacity onPress={cancelMultiSelect}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.selectionCount}>
+              {selectedUsers.length} selected
+            </Text>
+          </View>
+        )}
         <TextInput
           style={styles.searchInput}
           placeholder="Search people and messages..."
@@ -270,6 +344,16 @@ export default function ExploreScreen() {
           <Text style={styles.emptyStateText}>
             Search for people and messages across all your conversations
           </Text>
+          {!isMultiSelectMode && (
+            <TouchableOpacity
+              style={styles.multiSelectButton}
+              onPress={() => setIsMultiSelectMode(true)}
+            >
+              <Text style={styles.multiSelectButtonText}>
+                Create Group Chat
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : sections.length === 0 ? (
         <View style={styles.emptyState}>
@@ -305,6 +389,28 @@ export default function ExploreScreen() {
           )}
         </>
       )}
+
+      {/* Floating action button for group creation */}
+      {isMultiSelectMode && selectedUsers.length >= 2 && (
+        <View style={styles.fab}>
+          <TouchableOpacity
+            style={styles.fabButton}
+            onPress={handleCreateGroup}
+          >
+            <Text style={styles.fabText}>
+              Create Group ({selectedUsers.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Group name modal */}
+      <GroupNameModal
+        visible={showGroupNameModal}
+        onClose={() => setShowGroupNameModal(false)}
+        onSubmit={handleGroupNameSubmit}
+        participantCount={selectedUsers.length}
+      />
     </View>
   );
 }
@@ -447,6 +553,79 @@ const styles = StyleSheet.create({
   deepSearchButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  selectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cancelText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  selectionCount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  checkmark: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  resultItemSelected: {
+    backgroundColor: '#E3F2FD',
+  },
+  multiSelectButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  multiSelectButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    left: 16,
+    right: 16,
+  },
+  fabButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  fabText: {
+    color: '#fff',
+    fontSize: 18,
     fontWeight: '600',
   },
 });
