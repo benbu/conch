@@ -18,6 +18,7 @@ import { useConversations } from '@/hooks/useConversations';
 import { useMessages } from '@/hooks/useMessages';
 import { useUserPresence } from '@/hooks/usePresence';
 import { pickImageFromGallery, uploadConversationImage } from '@/services/imageService';
+import { setCurrentConversation } from '@/services/messageNotificationService';
 import { useChatStore } from '@/stores/chatStore';
 import { Message, User } from '@/types';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -101,9 +102,13 @@ export default function ChatScreen() {
   const aiPriority = useAIPriority(conversationId, { autoLoad: true });
 
   useEffect(() => {
+    // Set current conversation in both chat store and notification service
     useChatStore.getState().setCurrentConversation(conversationId);
+    setCurrentConversation(conversationId);
+    
     return () => {
       useChatStore.getState().setCurrentConversation(null);
+      setCurrentConversation(null);
     };
   }, [conversationId]);
 

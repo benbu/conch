@@ -5,13 +5,15 @@
  * Firebase Cloud Messaging will handle push notifications.
  */
 
-import { collection, onSnapshot, query, Timestamp, where } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, Timestamp, where } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { scheduleLocalNotification } from './notificationService';
 
 let unsubscribeList: Array<() => void> = [];
 let startTime: Timestamp | null = null;
 let processedMessageIds = new Set<string>();
+let currentConversationId: string | null = null;
+const lastNotifiedMessageIdByConversation: Record<string, string> = {};
 
 /**
  * Start listening for new messages across all conversations
@@ -48,46 +50,72 @@ export function startMessageNotificationListener() {
       const messagesRef = collection(db, 'conversations', conversationId, 'messages');
       const messagesQuery = query(
         messagesRef,
-        where('createdAt', '>', startTime!)
+        where('createdAt', '>', startTime!),
+        orderBy('createdAt', 'asc')
       );
 
       const messageUnsub = onSnapshot(messagesQuery, async (messagesSnapshot) => {
-        messagesSnapshot.docChanges().forEach(async (change) => {
-          if (change.type === 'added') {
-            const message = change.doc.data();
-            const messageId = change.doc.id;
+        // Consider only newly added docs in this snapshot
+        const added = messagesSnapshot.docChanges().filter((c) => c.type === 'added');
+        if (added.length === 0) return;
 
-            // Don't notify for own messages or already processed messages
-            if (message.senderId === user.uid || processedMessageIds.has(messageId)) {
+        // Pick the newest by createdAt
+        let newest = added[0];
+        let newestCreatedAt: Timestamp | null = (added[0].doc.data()?.createdAt as Timestamp) || null;
+        for (let i = 1; i < added.length; i++) {
+          const ct = (added[i].doc.data()?.createdAt as Timestamp) || null;
+          if (!newestCreatedAt || (ct && ct.toMillis() > newestCreatedAt.toMillis())) {
+            newest = added[i];
+            newestCreatedAt = ct;
+          }
+        }
+
+        const message = newest.doc.data();
+        const messageId = newest.doc.id;
+
+        // Guard: If we've already notified for a newer/equal message in this conversation, skip
+        if (lastNotifiedMessageIdByConversation[conversationId]) {
+          const lastId = lastNotifiedMessageIdByConversation[conversationId];
+          if (processedMessageIds.has(lastId)) {
+            // We already fired a notification for a message in this conversation; allow only strictly newer by createdAt
+            const lastDoc = messagesSnapshot.docs.find((d) => d.id === lastId);
+            const lastCt = (lastDoc?.data()?.createdAt as Timestamp) || null;
+            if (lastCt && newestCreatedAt && newestCreatedAt.toMillis() <= lastCt.toMillis()) {
               return;
             }
-
-            processedMessageIds.add(messageId);
-
-            // Trigger local notification
-            try {
-              // Get sender name from conversation participants
-              const senderName = message.senderName || conversation.participants?.find(
-                (p: any) => p.id === message.senderId
-              )?.displayName || 'Someone';
-              
-              const messageText = message.text || '📷 Image';
-              const title = conversation.isGroup 
-                ? conversation.name || 'Group Chat'
-                : senderName;
-
-              await scheduleLocalNotification(title, messageText, {
-                conversationId,
-                senderId: message.senderId,
-                messageId,
-              });
-
-              console.log(`📬 Local notification triggered: ${title} - ${messageText.substring(0, 30)}...`);
-            } catch (error) {
-              console.error('Error triggering notification:', error);
-            }
           }
-        });
+        }
+
+        // Don't notify for own messages, already processed, or active conversation
+        if (
+          message.senderId === user.uid ||
+          processedMessageIds.has(messageId) ||
+          conversationId === currentConversationId
+        ) {
+          return;
+        }
+
+        processedMessageIds.add(messageId);
+
+        try {
+          const senderName = message.senderName || conversation.participants?.find(
+            (p: any) => p.id === message.senderId
+          )?.displayName || 'Someone';
+
+          const messageText = message.text || '📷 Image';
+          const title = conversation.isGroup ? conversation.name || 'Group Chat' : senderName;
+
+          await scheduleLocalNotification(title, messageText, {
+            conversationId,
+            senderId: message.senderId,
+            messageId,
+          });
+
+          lastNotifiedMessageIdByConversation[conversationId] = messageId;
+          console.log(`📬 Local notification triggered: ${title} - ${messageText.substring(0, 30)}...`);
+        } catch (error) {
+          console.error('Error triggering notification:', error);
+        }
       });
 
       unsubscribeList.push(messageUnsub);
@@ -95,6 +123,15 @@ export function startMessageNotificationListener() {
   });
 
   unsubscribeList.push(conversationsUnsub);
+}
+
+/**
+ * Set the currently active conversation
+ * Call this when user navigates to/from a conversation
+ */
+export function setCurrentConversation(conversationId: string | null) {
+  currentConversationId = conversationId;
+  console.log(`📍 Current conversation set to: ${conversationId || 'none'}`);
 }
 
 /**
@@ -106,6 +143,7 @@ export function stopMessageNotificationListener() {
     unsubscribeList = [];
     startTime = null;
     processedMessageIds.clear();
+    currentConversationId = null;
     console.log('🔕 Stopped message notification listener');
   }
 }

@@ -95,14 +95,15 @@ The full notification system has been implemented with both in-app and backgroun
   - Swipe up → dismiss
   - X button → dismiss
 - **Auto-dismiss:** 4 seconds (with visual countdown via swipe indicator)
-- **Smart Filtering:** Doesn't show if already viewing that conversation
+- **Smart Filtering:** Doesn't show if already viewing that conversation (tracked at source)
 - **Styling:** Blue banner, icon, sender name, message preview
 
 ### Message Notification Service (NEW)
 - **Real-time Listener:** Monitors all conversations for new messages
 - **Timestamp Filtering:** Only notifies for messages created after login
 - **Duplicate Prevention:** Tracks processed message IDs
-- **Smart Detection:** Ignores own messages
+- **Smart Detection:** Ignores own messages AND messages in currently active conversation
+- **Active Conversation Tracking:** Chat screen reports when entering/leaving conversations
 - **Expo Go Support:** Works perfectly in development
 
 ### Background Notifications (Production)
@@ -156,8 +157,9 @@ The full notification system has been implemented with both in-app and backgroun
 ```
 User A is viewing Chat with User B
 User B sends message
-→ NO notification (already viewing)
+→ ✅ NO notification (filtered at source)
 → Message appears in chat instantly
+→ Console: "📍 Current conversation set to: [conversationId]"
 ```
 
 ### Scenario 2: In Different Chat
@@ -167,9 +169,10 @@ User B sends message
 → 📱 Notification banner slides down
 → Shows: "User B: Hello there!"
 → User A can:
-   - Tap → Navigate to User B chat
-   - Swipe up → Dismiss
+   - Tap → Navigate to User B chat + notification dismisses automatically
+   - Swipe up → Dismiss notification
    - Wait 4s → Auto-dismiss
+→ After tap: User A in User B chat, notification cleared
 ```
 
 ### Scenario 3: App in Background
