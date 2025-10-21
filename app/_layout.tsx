@@ -6,6 +6,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import 'react-native-reanimated';
 
 import { InAppNotification } from '@/components/InAppNotification';
+import { IN_APP_NOTIFICATIONS_ENABLED, LOCAL_NOTIFICATIONS_IN_EXPO_GO } from '@/constants/featureFlags';
 import { AuthProvider, useAuthContext } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -65,6 +66,7 @@ function RootNavigator() {
   // Handle in-app notifications
   const activeConversationId = useChatStore(selectCurrentConversationId);
   useEffect(() => {
+    if (!IN_APP_NOTIFICATIONS_ENABLED) return;
     if (!notification) return;
 
     // Prevent reprocessing the same notification
@@ -115,7 +117,9 @@ function RootNavigator() {
 
     // Start listening for new messages (for in-app notifications in Expo Go)
     // In production builds with FCM, this provides a fallback
-    startMessageNotificationListener();
+    if (IN_APP_NOTIFICATIONS_ENABLED || LOCAL_NOTIFICATIONS_IN_EXPO_GO) {
+      startMessageNotificationListener();
+    }
 
     // Handle app state changes
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
@@ -161,7 +165,9 @@ function RootNavigator() {
         clearTimeout(awayTimerRef.current);
       }
       stopPresenceTracking(user.id).catch(console.error);
-      stopMessageNotificationListener();
+      if (IN_APP_NOTIFICATIONS_ENABLED || LOCAL_NOTIFICATIONS_IN_EXPO_GO) {
+        stopMessageNotificationListener();
+      }
     };
   }, [user]);
 
@@ -191,8 +197,8 @@ function RootNavigator() {
       </Stack>
       <StatusBar style="auto" />
       
-      {/* In-app notification banner */}
-      {notificationData && (
+      {/* In-app notification banner (feature-flagged) */}
+      {IN_APP_NOTIFICATIONS_ENABLED && notificationData && (
         <InAppNotification
           visible={showNotification}
           title={notificationData.title}

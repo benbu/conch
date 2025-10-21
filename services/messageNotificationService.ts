@@ -6,6 +6,7 @@
  */
 
 import { collection, onSnapshot, orderBy, query, Timestamp, where } from 'firebase/firestore';
+import { IN_APP_NOTIFICATIONS_ENABLED, LOCAL_NOTIFICATIONS_IN_EXPO_GO } from '../constants/featureFlags';
 import { auth, db } from '../lib/firebase';
 import { scheduleLocalNotification } from './notificationService';
 
@@ -20,6 +21,9 @@ const lastNotifiedMessageIdByConversation: Record<string, string> = {};
  * Triggers local notifications for testing in Expo Go
  */
 export function startMessageNotificationListener() {
+  if (!IN_APP_NOTIFICATIONS_ENABLED && !LOCAL_NOTIFICATIONS_IN_EXPO_GO) {
+    return;
+  }
   const user = auth.currentUser;
   if (!user) {
     console.log('No user logged in, cannot start message notification listener');
