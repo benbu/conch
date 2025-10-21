@@ -1,17 +1,17 @@
 // Firestore service for conversations and messages
 import {
-    addDoc,
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    limit,
-    onSnapshot,
-    orderBy,
-    query,
-    serverTimestamp,
-    updateDoc,
-    where
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where
 } from 'firebase/firestore';
 import { getFirebaseDB } from '../lib/firebase';
 import { Conversation, Message, User } from '../types';
@@ -70,7 +70,10 @@ export async function getUserConversations(userId: string): Promise<Conversation
         createdBy: data.createdBy,
         createdAt: data.createdAt?.toDate() || new Date(),
         lastMessageAt: data.lastMessageAt?.toDate() || new Date(),
-        lastMessage: data.lastMessage,
+        lastMessage: data.lastMessage ? {
+          ...data.lastMessage,
+          createdAt: data.lastMessage.createdAt?.toDate() || new Date(),
+        } : undefined,
       };
     });
   } catch (error: any) {
@@ -103,7 +106,10 @@ export function subscribeToConversations(
         createdBy: data.createdBy,
         createdAt: data.createdAt?.toDate() || new Date(),
         lastMessageAt: data.lastMessageAt?.toDate() || new Date(),
-        lastMessage: data.lastMessage,
+        lastMessage: data.lastMessage ? {
+          ...data.lastMessage,
+          createdAt: data.lastMessage.createdAt?.toDate() || new Date(),
+        } : undefined,
       };
     });
     

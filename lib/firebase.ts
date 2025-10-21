@@ -1,9 +1,11 @@
 // Firebase configuration and initialization
+import NetInfo from '@react-native-community/netinfo';
 import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
 import { Auth, connectAuthEmulator, getAuth } from 'firebase/auth';
 import { connectDatabaseEmulator, Database, getDatabase } from 'firebase/database';
 import { connectFirestoreEmulator, Firestore, getFirestore } from 'firebase/firestore';
 import { connectStorageEmulator, FirebaseStorage, getStorage } from 'firebase/storage';
+import { Platform } from 'react-native';
 
 // Firebase configuration
 // TODO: Replace with your actual Firebase config or use environment variables
@@ -24,9 +26,35 @@ let db: Firestore;
 let storage: FirebaseStorage;
 let realtimeDb: Database;
 let isEmulatorConnected = false;
+let isNetInfoConfigured = false;
+
+/**
+ * Configure NetInfo for reliable iOS/Android reachability checks
+ */
+function configureNetInfo() {
+  if (isNetInfoConfigured) {
+    return;
+  }
+
+  try {
+    NetInfo.configure({
+      reachabilityUrl: 'https://www.gstatic.com/generate_204',
+      reachabilityTest: async (response) => response.status === 204,
+      reachabilityShortTimeout: 5000,
+      reachabilityLongTimeout: 60000,
+    });
+    isNetInfoConfigured = true;
+    console.log('✅ NetInfo configured for', Platform.OS);
+  } catch (error) {
+    console.error('❌ Error configuring NetInfo:', error);
+  }
+}
 
 export function initializeFirebase() {
   try {
+    // Configure NetInfo first, before any network checks
+    configureNetInfo();
+
     // Check if Firebase is already initialized
     if (getApps().length === 0) {
       app = initializeApp(firebaseConfig);

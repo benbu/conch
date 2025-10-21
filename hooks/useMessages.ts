@@ -1,16 +1,16 @@
 // Custom hook for messages
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { cacheMessages, getCachedMessages } from '../services/cacheService';
 import {
-  sendMessage as sendMessageToFirestore,
-  subscribeToMessages,
-  updateMessageStatus,
+    sendMessage as sendMessageToFirestore,
+    subscribeToMessages,
+    updateMessageStatus,
 } from '../services/firestoreService';
 import { selectUser, useAuthStore } from '../stores/authStore';
 import {
-  selectMessageLoading,
-  selectMessages,
-  useChatStore,
+    selectMessageLoading,
+    selectMessages,
+    useChatStore,
 } from '../stores/chatStore';
 import { Message } from '../types';
 import { useOfflineQueue } from './useOfflineQueue';
@@ -34,6 +34,11 @@ export function useMessages(conversationId: string | null) {
   const updateMessage = useChatStore((s) => s.updateMessage);
   const setMessageLoading = useChatStore((s) => s.setMessageLoading);
   const { queueMessage, isConnected } = useOfflineQueue();
+
+  // Local pagination state (separate from initial loading)
+  const PAGE_SIZE = 50;
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
   // Load cached messages first, then subscribe to real-time updates
   useEffect(() => {
@@ -139,34 +144,47 @@ export function useMessages(conversationId: string | null) {
   );
 
   const loadMoreMessages = useCallback(async () => {
-    if (!conversationId || loading || messages.length === 0) return;
+    if (!conversationId) return 0;
+    if (loadingMore) return 0;
+    if (!hasMore) return 0;
+    if (messages.length === 0) return 0;
 
     try {
-      setMessageLoading(conversationId, true);
-      
+      setLoadingMore(true);
+
       // Get oldest message date
       const oldestMessage = messages[0];
       const { getMessagesBefore } = await import('../services/firestoreService');
-      const olderMessages = await getMessagesBefore(conversationId, oldestMessage.createdAt);
-      
+      const olderMessages = await getMessagesBefore(
+        conversationId,
+        oldestMessage.createdAt,
+        PAGE_SIZE
+      );
+
       if (olderMessages.length > 0) {
         const allMessages = [...olderMessages, ...messages];
         setMessages(conversationId, allMessages);
         await cacheMessages(conversationId, allMessages);
       }
-      
-      setMessageLoading(conversationId, false);
+
+      if (olderMessages.length < PAGE_SIZE) {
+        setHasMore(false);
+      }
+
+      setLoadingMore(false);
       return olderMessages.length;
     } catch (error) {
       console.error('Error loading more messages:', error);
-      setMessageLoading(conversationId, false);
+      setLoadingMore(false);
       return 0;
     }
-  }, [conversationId, messages, loading, setMessages, setMessageLoading]);
+  }, [conversationId, messages, hasMore, loadingMore, setMessages]);
 
   return {
     messages,
     loading,
+    loadingMore,
+    hasMore,
     sendMessage,
     markAsRead,
     loadMoreMessages,

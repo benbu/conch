@@ -47,7 +47,7 @@ export default function ChatScreen() {
   
   const flatListRef = React.useRef<FlatList>(null);
   const { user } = useAuth();
-  const { messages, loading, sendMessage, loadMoreMessages } = useMessages(conversationId);
+  const { messages, loading, loadingMore, hasMore, sendMessage, loadMoreMessages } = useMessages(conversationId);
   const conversation = useChatStore((state) =>
     conversationId ? state.conversations.find((c) => c.id === conversationId) : undefined
   );
@@ -158,6 +158,19 @@ export default function ChatScreen() {
     }
   };
 
+  // Throttled top-of-list pagination
+  const topLoadThrottleRef = React.useRef(0);
+  const onScroll = ({ nativeEvent }: any) => {
+    const y = nativeEvent?.contentOffset?.y ?? 0;
+    if (y <= 32) {
+      const now = Date.now();
+      if (now - topLoadThrottleRef.current < 500) return;
+      if (loadingMore || !hasMore) return;
+      topLoadThrottleRef.current = now;
+      handleLoadMore();
+    }
+  };
+
   const renderMessage = ({ item }: { item: Message }) => {
     const isOwn = item.senderId === user?.id;
     const priorityScore = aiPriority.getPriorityScore(item.id);
@@ -244,8 +257,8 @@ export default function ChatScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messageList}
           inverted={false}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           onScrollToIndexFailed={(info) => {
             // Handle scroll failure by trying again
             setTimeout(() => {
@@ -257,7 +270,7 @@ export default function ChatScreen() {
             }, 100);
           }}
           ListHeaderComponent={
-            loading ? <ActivityIndicator style={styles.loadingMore} /> : null
+            loadingMore ? <ActivityIndicator style={styles.loadingMore} /> : null
           }
         />
 

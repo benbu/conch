@@ -8,11 +8,11 @@ import 'react-native-reanimated';
 import { AuthProvider, useAuthContext } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
-    setUserAway,
-    setUserOnline,
-    startPresenceTracking,
-    stopPresenceTracking,
-    updatePresence
+  setUserAway,
+  setUserOnline,
+  startPresenceTracking,
+  stopPresenceTracking,
+  updatePresence
 } from '@/services/presenceService';
 import { selectAuthLoading, selectUser, useAuthStore } from '@/stores/authStore';
 
