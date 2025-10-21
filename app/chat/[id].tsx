@@ -5,17 +5,19 @@ import { AIPriorityBadge } from '@/components/AIPriorityBadge';
 import { AISummarySheet } from '@/components/AISummarySheet';
 import { ConnectionBanner } from '@/components/ConnectionBanner';
 import { MessageBubble } from '@/components/MessageBubble';
+import PresenceIndicator from '@/components/PresenceIndicator';
 import { useAIActions } from '@/hooks/useAIActions';
 import { useAIDecisions } from '@/hooks/useAIDecisions';
 import { useAIPriority } from '@/hooks/useAIPriority';
 import { useAISummary } from '@/hooks/useAISummary';
 import { useAuth } from '@/hooks/useAuth';
 import { useMessages } from '@/hooks/useMessages';
+import { useUserPresence } from '@/hooks/usePresence';
 import { pickImageFromGallery, uploadConversationImage } from '@/services/imageService';
 import { useChatStore } from '@/stores/chatStore';
 import { Message } from '@/types';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -30,8 +32,10 @@ import {
 } from 'react-native';
 
 export default function ChatScreen() {
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; messageId?: string | string[] }>();
   const conversationId = Array.isArray(params.id) ? params.id?.[0] ?? null : params.id ?? null;
+  const targetMessageId = Array.isArray(params.messageId) ? params.messageId?.[0] : params.messageId;
+  
   const [messageText, setMessageText] = useState('');
   const [uploading, setUploading] = useState(false);
   const [showAIMenu, setShowAIMenu] = useState(false);
@@ -39,12 +43,29 @@ export default function ChatScreen() {
   const [showActions, setShowActions] = useState(false);
   const [showDecisions, setShowDecisions] = useState(false);
   const [showPriority, setShowPriority] = useState(false);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   
+  const flatListRef = React.useRef<FlatList>(null);
   const { user } = useAuth();
   const { messages, loading, sendMessage, loadMoreMessages } = useMessages(conversationId);
   const conversation = useChatStore((state) =>
     conversationId ? state.conversations.find((c) => c.id === conversationId) : undefined
   );
+
+  // Get conversation participants
+  const conversationParticipants = useChatStore((state) => state.conversationParticipants);
+  const participants = conversationId ? conversationParticipants[conversationId] || [] : [];
+  
+  // Get the other user for direct chats
+  const otherUser = useMemo(() => {
+    if (conversation?.type === 'direct') {
+      return participants.find((p: any) => p.id !== user?.id);
+    }
+    return null;
+  }, [conversation?.type, participants, user?.id]);
+
+  // Get presence for the other user
+  const { presence } = useUserPresence(otherUser?.id);
 
   // AI hooks
   const aiSummary = useAISummary(conversationId, { autoLoad: true });
@@ -58,6 +79,26 @@ export default function ChatScreen() {
       useChatStore.getState().setCurrentConversation(null);
     };
   }, [conversationId]);
+
+  // Scroll to target message when messages load
+  useEffect(() => {
+    if (targetMessageId && messages.length > 0 && !loading) {
+      const messageIndex = messages.findIndex(m => m.id === targetMessageId);
+      if (messageIndex !== -1) {
+        // Wait a bit for the list to render
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({
+            index: messageIndex,
+            animated: true,
+            viewPosition: 0.5, // Center the message
+          });
+          // Highlight the message briefly
+          setHighlightedMessageId(targetMessageId);
+          setTimeout(() => setHighlightedMessageId(null), 2000);
+        }, 300);
+      }
+    }
+  }, [targetMessageId, messages.length, loading]);
 
   const handleSend = async () => {
     if (!messageText.trim()) return;
@@ -120,13 +161,14 @@ export default function ChatScreen() {
   const renderMessage = ({ item }: { item: Message }) => {
     const isOwn = item.senderId === user?.id;
     const priorityScore = aiPriority.getPriorityScore(item.id);
+    const isHighlighted = item.id === highlightedMessageId;
     
     return (
-      <View>
+      <View style={isHighlighted ? styles.highlightedMessageContainer : undefined}>
         {priorityScore && priorityScore >= 6 && (
           <AIPriorityBadge 
             score={priorityScore}
-            reason={aiPriority.priority?.priorityMessages.find(p => p.messageId === item.id)?.reason}
+            reason={aiPriority.priority?.priorityMessages.find((p: any) => p.messageId === item.id)?.reason}
           />
         )}
         <MessageBubble message={item} isOwn={isOwn} onRetry={handleRetry} />
@@ -150,11 +192,34 @@ export default function ChatScreen() {
     );
   }
 
+  // Custom header title with presence
+  const HeaderTitle = () => {
+    const title = conversation?.title || 'Chat';
+    const effectiveStatus = otherUser?.appearOffline ? 'offline' : presence?.status || 'offline';
+    
+    return (
+      <View style={styles.headerTitleContainer}>
+        <Text style={styles.headerTitle}>{title}</Text>
+        {otherUser && (
+          <View style={styles.headerPresence}>
+            <PresenceIndicator userId={otherUser.id} user={otherUser} size="small" />
+            <Text style={styles.headerPresenceText}>
+              {effectiveStatus === 'online' ? 'Online' : effectiveStatus === 'away' ? 'Away' : 'Offline'}
+            </Text>
+            {presence?.customStatus && (
+              <Text style={styles.headerCustomStatus}> • {presence.customStatus}</Text>
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <>
       <Stack.Screen
         options={{
-          title: conversation?.title || 'Chat',
+          headerTitle: () => <HeaderTitle />,
           headerRight: () => (
             <TouchableOpacity
               onPress={() => setShowAIMenu(true)}
@@ -172,6 +237,8 @@ export default function ChatScreen() {
         keyboardVerticalOffset={100}
       >
         <FlatList
+          ref={flatListRef}
+          testID="chat-messages-list"
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
@@ -179,6 +246,16 @@ export default function ChatScreen() {
           inverted={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
+          onScrollToIndexFailed={(info) => {
+            // Handle scroll failure by trying again
+            setTimeout(() => {
+              flatListRef.current?.scrollToIndex({
+                index: info.index,
+                animated: true,
+                viewPosition: 0.5,
+              });
+            }, 100);
+          }}
           ListHeaderComponent={
             loading ? <ActivityIndicator style={styles.loadingMore} /> : null
           }
@@ -186,6 +263,7 @@ export default function ChatScreen() {
 
         <View style={styles.inputContainer}>
           <TouchableOpacity 
+            testID="chat-image-button"
             style={styles.imageButton}
             onPress={handleImagePick}
             disabled={uploading}
@@ -194,6 +272,7 @@ export default function ChatScreen() {
           </TouchableOpacity>
           
           <TextInput
+            testID="chat-message-input"
             style={styles.input}
             placeholder="Type a message..."
             value={messageText}
@@ -204,6 +283,7 @@ export default function ChatScreen() {
           />
           
           <TouchableOpacity
+            testID="chat-send-button"
             style={[styles.sendButton, (!messageText.trim() || uploading) && styles.sendButtonDisabled]}
             onPress={handleSend}
             disabled={!messageText.trim() || uploading}
@@ -346,6 +426,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#007AFF',
+  },
+  headerTitleContainer: {
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#000',
+  },
+  headerPresence: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  headerPresenceText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+  },
+  headerCustomStatus: {
+    fontSize: 12,
+    color: '#999',
+  },
+  highlightedMessageContainer: {
+    backgroundColor: '#FFF9C4',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFC107',
+    paddingLeft: 8,
   },
 });
 

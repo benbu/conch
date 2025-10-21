@@ -35,6 +35,10 @@ The project has completed **MVP + Phase 2 + Phase 3 + Phase 4 implementation**. 
 - ✅ **Phase 3:** AI UI components
 - ✅ **Phase 3:** AI features integration
 - ✅ **Phase 3:** AI settings screen
+- ✅ **October 21, 2025:** Unified search with intelligent deeper search
+- ✅ **October 21, 2025:** AI Settings navigation from Profile screen
+- ✅ **October 21, 2025:** Scroll-to-message functionality in chat
+- ✅ **October 21, 2025:** Enhanced search service with conversation context
 
 ## Next Immediate Steps
 

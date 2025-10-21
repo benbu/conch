@@ -12,6 +12,13 @@ export interface User {
   };
   createdAt: Date;
   updatedAt: Date;
+  appearOffline?: boolean; // Manual offline mode preference
+}
+
+export interface UserPresence {
+  status: 'online' | 'offline' | 'away';
+  lastSeen: number; // Timestamp
+  customStatus?: string;
 }
 
 export interface Conversation {

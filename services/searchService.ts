@@ -11,7 +11,9 @@ export interface SearchResult {
   id: string;
   data: Message | Conversation | User;
   conversationId?: string;
+  conversationTitle?: string;
   highlights?: string[];
+  timestamp?: Date;
 }
 
 /**
@@ -35,6 +37,8 @@ export async function searchMessages(query: string): Promise<SearchResult[]> {
 
     // Search in each conversation
     for (const conversationDoc of conversationsSnapshot.docs) {
+      const conversation = conversationDoc.data() as Conversation;
+      
       const messagesSnapshot = await db
         .collection('conversations')
         .doc(conversationDoc.id)
@@ -52,15 +56,24 @@ export async function searchMessages(query: string): Promise<SearchResult[]> {
             type: 'message',
             id: messageDoc.id,
             conversationId: conversationDoc.id,
+            conversationTitle: conversation.title || 'Chat',
             data: {
               ...message,
               id: messageDoc.id,
             } as Message,
             highlights: extractHighlights(message.text, normalizedQuery),
+            timestamp: message.createdAt,
           });
         }
       }
     }
+
+    // Sort by timestamp (most recent first)
+    results.sort((a, b) => {
+      const timeA = a.timestamp?.getTime() || 0;
+      const timeB = b.timestamp?.getTime() || 0;
+      return timeB - timeA;
+    });
 
     return results;
   } catch (error) {

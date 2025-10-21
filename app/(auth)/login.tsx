@@ -58,6 +58,7 @@ export default function LoginScreen() {
 
         <View style={styles.form}>
           <TextInput
+            testID="login-email-input"
             style={styles.input}
             placeholder="Email"
             value={email}
@@ -68,6 +69,7 @@ export default function LoginScreen() {
           />
 
           <TextInput
+            testID="login-password-input"
             style={styles.input}
             placeholder="Password"
             value={password}
@@ -77,6 +79,7 @@ export default function LoginScreen() {
           />
 
           <TouchableOpacity
+            testID="login-submit-button"
             style={[styles.button, styles.primaryButton]}
             onPress={handleLogin}
             disabled={loading}

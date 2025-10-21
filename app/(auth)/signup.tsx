@@ -67,6 +67,7 @@ export default function SignupScreen() {
 
           <View style={styles.form}>
             <TextInput
+              testID="signup-display-name-input"
               style={styles.input}
               placeholder="Display Name"
               value={displayName}
@@ -76,6 +77,7 @@ export default function SignupScreen() {
             />
 
             <TextInput
+              testID="signup-email-input"
               style={styles.input}
               placeholder="Email"
               value={email}
@@ -86,6 +88,7 @@ export default function SignupScreen() {
             />
 
             <TextInput
+              testID="signup-password-input"
               style={styles.input}
               placeholder="Password"
               value={password}
@@ -95,6 +98,7 @@ export default function SignupScreen() {
             />
 
             <TextInput
+              testID="signup-confirm-password-input"
               style={styles.input}
               placeholder="Confirm Password"
               value={confirmPassword}
@@ -104,6 +108,7 @@ export default function SignupScreen() {
             />
 
             <TouchableOpacity
+              testID="signup-submit-button"
               style={[styles.button, styles.primaryButton]}
               onPress={handleSignup}
               disabled={loading}
