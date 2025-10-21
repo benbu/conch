@@ -1,27 +1,29 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
+import { searchUsers as searchUsersFirestore } from '@/services/firestoreService';
+import { SearchResult, searchUsers as searchUsersGlobal } from '@/services/searchService';
 import { useChatStore } from '@/stores/chatStore';
 import { Conversation, User } from '@/types';
-import { searchUsers as searchUsersFirestore } from '@/services/firestoreService';
-import { searchUsers as searchUsersGlobal, SearchResult } from '@/services/searchService';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Modal,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 export default function ChatsScreen() {
   const { conversations, createConversation } = useConversations();
   const { user } = useAuth();
   const router = useRouter();
+  const conversationParticipants = require('../../stores/chatStore').useChatStore.getState().conversationParticipants;
+  const computedNames = require('../../stores/chatStore').useChatStore.getState().computedConversationNames;
   const participantsByConversation = useChatStore((state) => state.conversationParticipants);
 
   const [showNewChat, setShowNewChat] = useState(false);
@@ -106,10 +108,18 @@ export default function ChatsScreen() {
 
   const renderConversation = ({ item }: { item: Conversation }) => {
     const otherParticipants = item.participantIds.filter((id) => id !== user?.id);
-    const displayTitle =
-      item.title || otherParticipants.length > 1
-        ? `Group (${otherParticipants.length + 1})`
-        : 'Chat';
+    const computed = computedNames[item.id];
+    let displayTitle = computed;
+    if (!displayTitle) {
+      const participantsForConv = conversationParticipants[item.id] || [];
+      const others = participantsForConv.filter((p: any) => p.id !== user?.id).slice(0, 5);
+      if (others.length > 0) {
+        const full = others.map((u: any) => u.displayName).join(',');
+        displayTitle = full.length <= 30 ? full : others.map((u: any) => u.displayName.slice(0, 5)).join(',');
+      } else {
+        displayTitle = item.title || (otherParticipants.length > 1 ? `Group (${otherParticipants.length + 1})` : 'Chat');
+      }
+    }
 
     return (
       <TouchableOpacity
