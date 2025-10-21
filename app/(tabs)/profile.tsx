@@ -1,3 +1,4 @@
+import { IN_APP_NOTIFICATIONS_ENABLED } from '@/constants/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useChatStore } from '@/stores/chatStore';
@@ -122,22 +123,24 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Development</Text>
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            sendTest(
-              'John Doe',
-              'Hey! Check out this amazing new feature 🚀',
-              'test-123'
-            );
-          }}
-        >
-          <Text style={styles.menuItemText}>🔔 Test In-App Notification</Text>
-          <Text style={styles.menuItemChevron}>›</Text>
-        </TouchableOpacity>
-      </View>
+      {IN_APP_NOTIFICATIONS_ENABLED && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Development</Text>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              sendTest(
+                'John Doe',
+                'Hey! Check out this amazing new feature 🚀',
+                'test-123'
+              );
+            }}
+          >
+            <Text style={styles.menuItemText}>🔔 Test In-App Notification</Text>
+            <Text style={styles.menuItemChevron}>›</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={styles.section}>
         <TouchableOpacity testID="logout-button" style={styles.signOutButton} onPress={handleSignOut}>
