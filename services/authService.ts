@@ -1,18 +1,19 @@
 // Authentication service with Firebase
 import {
-  createUserWithEmailAndPassword,
-  User as FirebaseUser,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  sendPasswordResetEmail,
-  signInWithCredential,
-  signInWithEmailAndPassword,
-  signOut,
-  updateProfile
+    createUserWithEmailAndPassword,
+    User as FirebaseUser,
+    GoogleAuthProvider,
+    onAuthStateChanged,
+    sendPasswordResetEmail,
+    signInWithCredential,
+    signInWithEmailAndPassword,
+    signOut,
+    updateProfile
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseDB } from '../lib/firebase';
 import { User } from '../types';
+import { startPresenceTracking, stopPresenceTracking } from './presenceService';
 
 const auth = getFirebaseAuth();
 const db = getFirebaseDB();
@@ -83,6 +84,11 @@ export async function signInWithEmail(
       await setDoc(doc(db, 'users', user.id), user);
     }
 
+    // Start presence tracking after successful login
+    startPresenceTracking(user.id, user.appearOffline || false).catch((error) => {
+      console.error('Failed to start presence tracking:', error);
+    });
+
     return user;
   } catch (error: any) {
     console.error('Error signing in:', error);
@@ -118,6 +124,11 @@ export async function signInWithGoogleIdToken(idToken: string): Promise<User> {
       await setDoc(doc(db, 'users', user.id), user);
     }
 
+    // Start presence tracking after successful login
+    startPresenceTracking(user.id, user.appearOffline || false).catch((error) => {
+      console.error('Failed to start presence tracking:', error);
+    });
+
     return user;
   } catch (error: any) {
     console.error('Error signing in with Google:', error);
@@ -141,6 +152,13 @@ export async function signInWithGoogle(): Promise<User> {
  */
 export async function signOutUser(): Promise<void> {
   try {
+    // Get current user ID before signing out
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      // Stop presence tracking before signing out
+      await stopPresenceTracking(currentUser.uid);
+    }
+    
     await signOut(auth);
   } catch (error: any) {
     console.error('Error signing out:', error);

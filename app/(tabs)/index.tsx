@@ -1,3 +1,4 @@
+import PresenceIndicator from '@/components/PresenceIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
 import { searchUsers as searchUsersFirestore } from '@/services/firestoreService';
@@ -110,9 +111,10 @@ export default function ChatsScreen() {
     const otherParticipants = item.participantIds.filter((id) => id !== user?.id);
     const computed = computedNames[item.id];
     let displayTitle = computed;
+    const participantsForConv = conversationParticipants[item.id] || [];
+    const others = participantsForConv.filter((p: any) => p.id !== user?.id);
+    
     if (!displayTitle) {
-      const participantsForConv = conversationParticipants[item.id] || [];
-      const others = participantsForConv.filter((p: any) => p.id !== user?.id).slice(0, 5);
       if (others.length > 0) {
         const full = others.map((u: any) => u.displayName).join(',');
         displayTitle = full.length <= 30 ? full : others.map((u: any) => u.displayName.slice(0, 5)).join(',');
@@ -121,15 +123,26 @@ export default function ChatsScreen() {
       }
     }
 
+    // For direct chats, show presence of the other user
+    const otherUser = item.type === 'direct' && others.length > 0 ? others[0] : null;
+
     return (
       <TouchableOpacity
+        testID={`conversation-item-${item.id}`}
         style={styles.conversationItem}
         onPress={() => router.push(`/chat/${item.id}`)}
       >
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {displayTitle.charAt(0).toUpperCase()}
-          </Text>
+        <View style={styles.avatarContainer}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {displayTitle.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          {otherUser && (
+            <View style={styles.presenceDot}>
+              <PresenceIndicator userId={otherUser.id} user={otherUser} size="small" />
+            </View>
+          )}
         </View>
 
         <View style={styles.conversationContent}>
@@ -177,6 +190,7 @@ export default function ChatsScreen() {
         </View>
       ) : (
         <FlatList
+          testID="conversations-list"
           data={conversations}
           renderItem={renderConversation}
           keyExtractor={(item) => item.id}
@@ -186,6 +200,7 @@ export default function ChatsScreen() {
 
       {/* Floating New Chat Button */}
       <TouchableOpacity
+        testID="new-conversation-button"
         style={styles.fab}
         onPress={() => {
           setSearchQuery('');
@@ -206,9 +221,10 @@ export default function ChatsScreen() {
       {/* New Chat Overlay */}
       <Modal visible={showNewChat} animationType="fade" transparent onRequestClose={() => setShowNewChat(false)}>
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
+          <View testID="new-conversation-modal" style={styles.modalCard}>
             <View style={styles.searchBarRow}>
               <TextInput
+                testID="user-search-input"
                 style={styles.searchInput}
                 placeholder="Search or start a new chat..."
                 value={searchQuery}
@@ -237,8 +253,9 @@ export default function ChatsScreen() {
                     </Text>
                   </View>
                 )}
-                renderItem={({ item }) => (
+                renderItem={({ item, index }) => (
                   <TouchableOpacity
+                    testID={`user-search-result-${index}`}
                     style={styles.userRow}
                     onPress={async () => {
                       try {
@@ -250,8 +267,13 @@ export default function ChatsScreen() {
                       }
                     }}
                   >
-                    <View style={styles.avatar}> 
-                      <Text style={styles.avatarText}>{item.displayName?.charAt(0).toUpperCase()}</Text>
+                    <View style={styles.avatarContainer}> 
+                      <View style={styles.avatar}>
+                        <Text style={styles.avatarText}>{item.displayName?.charAt(0).toUpperCase()}</Text>
+                      </View>
+                      <View style={styles.presenceDot}>
+                        <PresenceIndicator userId={item.id} user={item} size="small" />
+                      </View>
                     </View>
                     <View style={styles.userInfo}>
                       <Text style={styles.displayName}>{item.displayName}</Text>
@@ -394,6 +416,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
   avatar: {
     width: 50,
     height: 50,
@@ -401,12 +427,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   avatarText: {
     color: '#fff',
     fontSize: 20,
     fontWeight: '600',
+  },
+  presenceDot: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 999,
+    padding: 2,
   },
   conversationContent: {
     flex: 1,

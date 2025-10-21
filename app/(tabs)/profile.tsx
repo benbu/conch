@@ -1,15 +1,15 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useChatStore } from '@/stores/chatStore';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -43,7 +43,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView testID="profile-screen" style={styles.container}>
       <View style={styles.header}>
         <View style={styles.avatarLarge}>
           <Text style={styles.avatarLargeText}>
@@ -88,6 +88,22 @@ export default function ProfileScreen() {
           <Text style={styles.menuItemChevron}>›</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => router.push('/(tabs)/presence-settings')}
+        >
+          <Text style={styles.menuItemText}>🟢 Presence Settings</Text>
+          <Text style={styles.menuItemChevron}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => router.push('/(tabs)/ai-settings')}
+        >
+          <Text style={styles.menuItemText}>✨ AI Settings</Text>
+          <Text style={styles.menuItemChevron}>›</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.menuItem}>
           <Text style={styles.menuItemText}>Notifications</Text>
           <Text style={styles.menuItemChevron}>›</Text>
@@ -105,7 +121,7 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.section}>
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+        <TouchableOpacity testID="logout-button" style={styles.signOutButton} onPress={handleSignOut}>
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </View>
