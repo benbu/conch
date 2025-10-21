@@ -21,6 +21,7 @@ import {
   updatePresence
 } from '@/services/presenceService';
 import { selectAuthLoading, selectUser, useAuthStore } from '@/stores/authStore';
+import { selectCurrentConversationId, useChatStore } from '@/stores/chatStore';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -35,6 +36,7 @@ function RootNavigator() {
   const router = useRouter();
   const awayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const appState = useRef<AppStateStatus>(AppState.currentState);
+  const processedNotificationIdsRef = useRef<Set<string>>(new Set());
   
   // In-app notification state
   const { notification } = useNotifications();
@@ -61,31 +63,46 @@ function RootNavigator() {
   }, [user, initialized, loading, segments]);
 
   // Handle in-app notifications
+  const activeConversationId = useChatStore(selectCurrentConversationId);
   useEffect(() => {
     if (!notification) return;
 
+    // Prevent reprocessing the same notification
+    const id = notification.request.identifier;
+    if (processedNotificationIdsRef.current.has(id)) {
+      return;
+    }
+
     const data = notification.request.content.data;
     const conversationId = data?.conversationId as string | undefined;
-    
-    if (!conversationId) return;
+    if (!conversationId) {
+      processedNotificationIdsRef.current.add(id);
+      return;
+    }
 
-    // Don't show notification if user is currently viewing this conversation
-    const currentConversationId = segments[segments.length - 1];
-    if (segments[0] === 'chat' && currentConversationId === conversationId) {
+    // Don't show if user is already in this conversation
+    if (activeConversationId && activeConversationId === conversationId) {
+      processedNotificationIdsRef.current.add(id);
+      // Dismiss the system notification so it doesn't linger
+      import('expo-notifications').then(({ dismissNotificationAsync }) => {
+        dismissNotificationAsync(id);
+      });
       return;
     }
 
     // Show in-app notification
     const title = notification.request.content.title || 'New Message';
     const message = notification.request.content.body || '';
-    
-    setNotificationData({
-      title,
-      message,
-      conversationId,
-    });
+
+    setNotificationData({ title, message, conversationId });
     setShowNotification(true);
-  }, [notification, segments]);
+
+    // Mark as processed and dismiss system notification
+    processedNotificationIdsRef.current.add(id);
+    import('expo-notifications').then(({ dismissNotificationAsync }) => {
+      dismissNotificationAsync(id);
+    });
+  }, [notification, activeConversationId]);
 
   // Handle presence tracking and message notifications based on app lifecycle
   useEffect(() => {
@@ -151,12 +168,17 @@ function RootNavigator() {
   // Handle notification navigation
   const handleNotificationPress = () => {
     if (notificationData?.conversationId) {
+      // Clear immediately to avoid reappearance
+      setShowNotification(false);
+      setNotificationData(null);
       router.push(`/chat/${notificationData.conversationId}`);
     }
   };
 
   const handleNotificationDismiss = () => {
+    // Clear immediately to avoid reappearance
     setShowNotification(false);
+    setNotificationData(null);
   };
 
   return (
