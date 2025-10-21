@@ -3,6 +3,7 @@
  * Global search functionality for messages and conversations
  */
 
+import { collection, limit as firestoreLimit, getDocs, orderBy, query, where } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { Conversation, Message, User } from '../types';
 
@@ -19,19 +20,20 @@ export interface SearchResult {
 /**
  * Search messages across all conversations
  */
-export async function searchMessages(query: string): Promise<SearchResult[]> {
+export async function searchMessages(queryText: string): Promise<SearchResult[]> {
   try {
     const user = auth.currentUser;
     if (!user) return [];
 
-    const normalizedQuery = query.toLowerCase().trim();
+    const normalizedQuery = queryText.toLowerCase().trim();
     if (!normalizedQuery) return [];
 
     // Get all conversations user is part of
-    const conversationsSnapshot = await db
-      .collection('conversations')
-      .where('participantIds', 'array-contains', user.uid)
-      .get();
+    const conversationsQuery = query(
+      collection(db, 'conversations'),
+      where('participantIds', 'array-contains', user.uid)
+    );
+    const conversationsSnapshot = await getDocs(conversationsQuery);
 
     const results: SearchResult[] = [];
 
@@ -39,13 +41,12 @@ export async function searchMessages(query: string): Promise<SearchResult[]> {
     for (const conversationDoc of conversationsSnapshot.docs) {
       const conversation = conversationDoc.data() as Conversation;
       
-      const messagesSnapshot = await db
-        .collection('conversations')
-        .doc(conversationDoc.id)
-        .collection('messages')
-        .orderBy('createdAt', 'desc')
-        .limit(100) // Limit per conversation for performance
-        .get();
+      const messagesQuery = query(
+        collection(db, 'conversations', conversationDoc.id, 'messages'),
+        orderBy('createdAt', 'desc'),
+        firestoreLimit(100) // Limit per conversation for performance
+      );
+      const messagesSnapshot = await getDocs(messagesQuery);
 
       for (const messageDoc of messagesSnapshot.docs) {
         const message = messageDoc.data() as Message;
@@ -85,31 +86,32 @@ export async function searchMessages(query: string): Promise<SearchResult[]> {
 /**
  * Search conversations by title
  */
-export async function searchConversations(query: string): Promise<SearchResult[]> {
+export async function searchConversations(queryText: string): Promise<SearchResult[]> {
   try {
     const user = auth.currentUser;
     if (!user) return [];
 
-    const normalizedQuery = query.toLowerCase().trim();
+    const normalizedQuery = queryText.toLowerCase().trim();
     if (!normalizedQuery) return [];
 
-    const conversationsSnapshot = await db
-      .collection('conversations')
-      .where('participantIds', 'array-contains', user.uid)
-      .get();
+    const conversationsQuery = query(
+      collection(db, 'conversations'),
+      where('participantIds', 'array-contains', user.uid)
+    );
+    const conversationsSnapshot = await getDocs(conversationsQuery);
 
     const results: SearchResult[] = [];
 
-    for (const doc of conversationsSnapshot.docs) {
-      const conversation = doc.data() as Conversation;
+    for (const docSnapshot of conversationsSnapshot.docs) {
+      const conversation = docSnapshot.data() as Conversation;
       
       if (conversation.title?.toLowerCase().includes(normalizedQuery)) {
         results.push({
           type: 'conversation',
-          id: doc.id,
+          id: docSnapshot.id,
           data: {
             ...conversation,
-            id: doc.id,
+            id: docSnapshot.id,
           } as Conversation,
         });
       }
@@ -125,21 +127,22 @@ export async function searchConversations(query: string): Promise<SearchResult[]
 /**
  * Search users by name or email
  */
-export async function searchUsers(query: string): Promise<SearchResult[]> {
+export async function searchUsers(queryText: string): Promise<SearchResult[]> {
   try {
-    const normalizedQuery = query.toLowerCase().trim();
+    const normalizedQuery = queryText.toLowerCase().trim();
     if (!normalizedQuery) return [];
 
     // Note: This is a simplified search. In production, use a proper search service like Algolia
-    const usersSnapshot = await db
-      .collection('users')
-      .limit(20)
-      .get();
+    const usersQuery = query(
+      collection(db, 'users'),
+      firestoreLimit(20)
+    );
+    const usersSnapshot = await getDocs(usersQuery);
 
     const results: SearchResult[] = [];
 
-    for (const doc of usersSnapshot.docs) {
-      const user = doc.data() as User;
+    for (const docSnapshot of usersSnapshot.docs) {
+      const user = docSnapshot.data() as User;
       
       if (
         user.displayName?.toLowerCase().includes(normalizedQuery) ||
@@ -147,10 +150,10 @@ export async function searchUsers(query: string): Promise<SearchResult[]> {
       ) {
         results.push({
           type: 'user',
-          id: doc.id,
+          id: docSnapshot.id,
           data: {
             ...user,
-            id: doc.id,
+            id: docSnapshot.id,
           } as User,
         });
       }
@@ -166,11 +169,11 @@ export async function searchUsers(query: string): Promise<SearchResult[]> {
 /**
  * Global search combining all types
  */
-export async function globalSearch(query: string): Promise<SearchResult[]> {
+export async function globalSearch(queryText: string): Promise<SearchResult[]> {
   const [messages, conversations, users] = await Promise.all([
-    searchMessages(query),
-    searchConversations(query),
-    searchUsers(query),
+    searchMessages(queryText),
+    searchConversations(queryText),
+    searchUsers(queryText),
   ]);
 
   return [...conversations, ...messages, ...users];
@@ -179,16 +182,16 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
 /**
  * Extract text highlights around search query
  */
-function extractHighlights(text: string, query: string, contextLength = 50): string[] {
+function extractHighlights(text: string, queryText: string, contextLength = 50): string[] {
   const highlights: string[] = [];
   const lowerText = text.toLowerCase();
-  const lowerQuery = query.toLowerCase();
+  const lowerQuery = queryText.toLowerCase();
   
   let index = lowerText.indexOf(lowerQuery);
   
   while (index !== -1) {
     const start = Math.max(0, index - contextLength);
-    const end = Math.min(text.length, index + query.length + contextLength);
+    const end = Math.min(text.length, index + queryText.length + contextLength);
     
     let highlight = text.substring(start, end);
     

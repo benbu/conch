@@ -58,6 +58,12 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="presence-settings"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
