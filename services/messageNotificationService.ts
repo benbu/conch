@@ -8,11 +8,11 @@
 import { collection, onSnapshot, orderBy, query, Timestamp, where } from 'firebase/firestore';
 import { IN_APP_NOTIFICATIONS_ENABLED, LOCAL_NOTIFICATIONS_IN_EXPO_GO } from '../constants/featureFlags';
 import { auth, db } from '../lib/firebase';
-import { scheduleLocalNotification } from './notificationService';
+import { NotificationGateway } from './notifications/NotificationGateway';
+import { hasProcessed, markProcessed, recordNotified, resetDeduper, shouldNotify } from './notifications/notificationDeduper';
 
 let unsubscribeList: Array<() => void> = [];
 let startTime: Timestamp | null = null;
-let processedMessageIds = new Set<string>();
 let currentConversationId: string | null = null;
 const lastNotifiedMessageIdByConversation: Record<string, string> = {};
 
@@ -32,7 +32,7 @@ export function startMessageNotificationListener() {
 
   // Mark the start time - only notify for messages after this point
   startTime = Timestamp.now();
-  processedMessageIds.clear();
+  resetDeduper();
 
   console.log('🔔 Starting message notification listener for new messages...');
 
@@ -78,28 +78,27 @@ export function startMessageNotificationListener() {
         const messageId = newest.doc.id;
 
         // Guard: If we've already notified for a newer/equal message in this conversation, skip
+        let lastCtMs: number | undefined = undefined;
         if (lastNotifiedMessageIdByConversation[conversationId]) {
           const lastId = lastNotifiedMessageIdByConversation[conversationId];
-          if (processedMessageIds.has(lastId)) {
-            // We already fired a notification for a message in this conversation; allow only strictly newer by createdAt
-            const lastDoc = messagesSnapshot.docs.find((d) => d.id === lastId);
-            const lastCt = (lastDoc?.data()?.createdAt as Timestamp) || null;
-            if (lastCt && newestCreatedAt && newestCreatedAt.toMillis() <= lastCt.toMillis()) {
-              return;
-            }
-          }
+          const lastDoc = messagesSnapshot.docs.find((d) => d.id === lastId);
+          const lastCt = (lastDoc?.data()?.createdAt as Timestamp) || null;
+          if (lastCt) lastCtMs = lastCt.toMillis();
         }
 
         // Don't notify for own messages, already processed, or active conversation
         if (
           message.senderId === user.uid ||
-          processedMessageIds.has(messageId) ||
+          hasProcessed(messageId) ||
           conversationId === currentConversationId
         ) {
           return;
         }
 
-        processedMessageIds.add(messageId);
+        // Deduper check comparing timestamps
+        if (!shouldNotify(conversationId, messageId, newestCreatedAt?.toMillis(), lastCtMs)) {
+          return;
+        }
 
         try {
           const senderName = message.senderName || conversation.participants?.find(
@@ -109,13 +108,19 @@ export function startMessageNotificationListener() {
           const messageText = message.text || '📷 Image';
           const title = conversation.isGroup ? conversation.name || 'Group Chat' : senderName;
 
-          await scheduleLocalNotification(title, messageText, {
-            conversationId,
-            senderId: message.senderId,
-            messageId,
+          await NotificationGateway.notify({
+            title,
+            body: messageText,
+            data: {
+              conversationId,
+              senderId: message.senderId,
+              messageId,
+            },
           });
 
           lastNotifiedMessageIdByConversation[conversationId] = messageId;
+          recordNotified(conversationId, messageId);
+          markProcessed(messageId);
           console.log(`📬 Local notification triggered: ${title} - ${messageText.substring(0, 30)}...`);
         } catch (error) {
           console.error('Error triggering notification:', error);
@@ -146,7 +151,7 @@ export function stopMessageNotificationListener() {
     unsubscribeList.forEach(unsub => unsub());
     unsubscribeList = [];
     startTime = null;
-    processedMessageIds.clear();
+    resetDeduper();
     currentConversationId = null;
     console.log('🔕 Stopped message notification listener');
   }

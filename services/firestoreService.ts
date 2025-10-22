@@ -17,6 +17,8 @@ import {
 } from 'firebase/firestore';
 import { getFirebaseDB } from '../lib/firebase';
 import { Conversation, Message, User } from '../types';
+import { mapConversation } from './mappers/conversationMapper';
+import { mapMessage } from './mappers/messageMapper';
 
 const db = getFirebaseDB();
 
@@ -74,28 +76,7 @@ export async function getUserConversations(userId: string): Promise<Conversation
 
     const snapshot = await getDocs(q);
     
-    return snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        title: data.title,
-        name: data.name,
-        type: data.type,
-        participantIds: data.participantIds,
-        members: data.members?.map((m: any) => ({
-          userId: m.userId,
-          role: m.role,
-          joinedAt: m.joinedAt?.toDate?.() || new Date(),
-        })),
-        createdBy: data.createdBy,
-        createdAt: data.createdAt?.toDate() || new Date(),
-        lastMessageAt: data.lastMessageAt?.toDate() || new Date(),
-        lastMessage: data.lastMessage ? {
-          ...data.lastMessage,
-          createdAt: data.lastMessage.createdAt?.toDate() || new Date(),
-        } : undefined,
-      };
-    });
+    return snapshot.docs.map((doc) => mapConversation(doc));
   } catch (error: any) {
     console.error('Error fetching conversations:', error);
     throw new Error(error.message || 'Failed to fetch conversations');
@@ -116,29 +97,7 @@ export function subscribeToConversations(
   );
 
   return onSnapshot(q, (snapshot) => {
-    const conversations = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        title: data.title,
-        name: data.name,
-        type: data.type,
-        participantIds: data.participantIds,
-        members: data.members?.map((m: any) => ({
-          userId: m.userId,
-          role: m.role,
-          joinedAt: m.joinedAt?.toDate?.() || new Date(),
-        })),
-        createdBy: data.createdBy,
-        createdAt: data.createdAt?.toDate() || new Date(),
-        lastMessageAt: data.lastMessageAt?.toDate() || new Date(),
-        lastMessage: data.lastMessage ? {
-          ...data.lastMessage,
-          createdAt: data.lastMessage.createdAt?.toDate() || new Date(),
-        } : undefined,
-      };
-    });
-    
+    const conversations = snapshot.docs.map((doc) => mapConversation(doc));
     callback(conversations);
   });
 }
@@ -203,24 +162,7 @@ export async function getMessages(
     const snapshot = await getDocs(q);
     
     return snapshot.docs
-      .map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          conversationId,
-          senderId: data.senderId,
-          text: data.text,
-          attachments: data.attachments,
-          deliveryStatus: data.deliveryStatus,
-          readBy: data.readBy
-            ? Object.fromEntries(
-                Object.entries(data.readBy).map(([k, v]: any) => [k, v?.toDate ? v.toDate() : v])
-              )
-            : undefined,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate(),
-        };
-      })
+      .map((doc) => mapMessage(doc, conversationId))
       .reverse(); // Reverse to show oldest first
   } catch (error: any) {
     console.error('Error fetching messages:', error);
@@ -247,24 +189,7 @@ export async function getMessagesBefore(
     const snapshot = await getDocs(q);
     
     return snapshot.docs
-      .map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          conversationId,
-          senderId: data.senderId,
-          text: data.text,
-          attachments: data.attachments,
-          deliveryStatus: data.deliveryStatus,
-          readBy: data.readBy
-            ? Object.fromEntries(
-                Object.entries(data.readBy).map(([k, v]: any) => [k, v?.toDate ? v.toDate() : v])
-              )
-            : undefined,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate(),
-        };
-      })
+      .map((doc) => mapMessage(doc, conversationId))
       .reverse(); // Reverse to show oldest first
   } catch (error: any) {
     console.error('Error fetching messages before date:', error);
@@ -285,25 +210,7 @@ export function subscribeToMessages(
   );
 
   return onSnapshot(q, (snapshot) => {
-    const messages = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        conversationId,
-        senderId: data.senderId,
-        text: data.text,
-        attachments: data.attachments,
-        deliveryStatus: data.deliveryStatus,
-        readBy: data.readBy
-          ? Object.fromEntries(
-              Object.entries(data.readBy).map(([k, v]: any) => [k, v?.toDate ? v.toDate() : v])
-            )
-          : undefined,
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate(),
-      };
-    });
-    
+    const messages = snapshot.docs.map((doc) => mapMessage(doc, conversationId));
     callback(messages);
   });
 }

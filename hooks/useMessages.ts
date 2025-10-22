@@ -2,15 +2,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { cacheMessages, getCachedMessages } from '../services/cacheService';
 import {
-    sendMessage as sendMessageToFirestore,
-    subscribeToMessages,
-    updateMessageStatus,
+  sendMessage as sendMessageToFirestore,
+  subscribeToMessages,
+  updateMessageStatus,
 } from '../services/firestoreService';
+import { createOptimisticMessage } from '../services/messages/messageFactory';
 import { selectUser, useAuthStore } from '../stores/authStore';
 import {
-    selectMessageLoading,
-    selectMessages,
-    useChatStore,
+  selectMessageLoading,
+  selectMessages,
+  useChatStore,
 } from '../stores/chatStore';
 import { Message } from '../types';
 import { useOfflineQueue } from './useOfflineQueue';
@@ -80,18 +81,7 @@ export function useMessages(conversationId: string | null) {
         }
 
         // Create optimistic message
-        const localId = `local-${Date.now()}`;
-        const optimisticMessage: Message = {
-          id: localId,
-          conversationId,
-          senderId: user.id,
-          sender: user,
-          text,
-          attachments: attachments || [],
-          deliveryStatus: 'sending',
-          createdAt: new Date(),
-          localId,
-        };
+        const optimisticMessage = createOptimisticMessage(conversationId, user, text, attachments);
 
         // Add optimistic message to store
         addMessage(conversationId, optimisticMessage);

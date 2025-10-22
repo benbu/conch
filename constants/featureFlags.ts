@@ -7,4 +7,9 @@ export const IN_APP_NOTIFICATIONS_ENABLED = false;
 // This will schedule local OS notifications without showing the custom in-app banner
 export const LOCAL_NOTIFICATIONS_IN_EXPO_GO = true;
 
+// V2 rollout flags for aggressive refactor areas
+export const NOTIFICATIONS_V2 = true; // Use NotificationGateway + deduper path
+export const READ_RECEIPTS_V2 = false; // Use repository + batching when enabled
+export const PRESENCE_V2 = false; // Use multiplexed presence subscriptions when enabled
+
 

@@ -8,8 +8,10 @@ import {
     update
 } from 'firebase/database';
 import { doc, updateDoc } from 'firebase/firestore';
+import { PRESENCE_V2 } from '../constants/featureFlags';
 import { getFirebaseDB, getFirebaseRealtimeDB } from '../lib/firebase';
 import { UserPresence } from '../types';
+import { cleanupPresenceRegistry, subscribeToPresence, subscribeToPresences } from './presence/PresenceRegistry';
 
 const realtimeDb = getFirebaseRealtimeDB();
 const firestoreDb = getFirebaseDB();
@@ -69,28 +71,39 @@ export function subscribeToUserPresence(
   userId: string,
   callback: (presence: UserPresence | null) => void
 ): () => void {
+  if (PRESENCE_V2) {
+    const unsub = subscribeToPresence(userId, callback);
+    const listenerId = `single-${userId}`;
+    activeListeners.set(listenerId, unsub);
+    return () => {
+      const u = activeListeners.get(listenerId);
+      if (u) u();
+      activeListeners.delete(listenerId);
+    };
+  }
+
   const presenceRef = ref(realtimeDb, `presence/${userId}`);
-  
-  const unsubscribe = onValue(presenceRef, (snapshot) => {
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      callback({
-        status: data.status || 'offline',
-        lastSeen: data.lastSeen || Date.now(),
-        customStatus: data.customStatus,
-      });
-    } else {
+  const unsubscribe = onValue(
+    presenceRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        callback({
+          status: data.status || 'offline',
+          lastSeen: data.lastSeen || Date.now(),
+          customStatus: data.customStatus,
+        });
+      } else {
+        callback(null);
+      }
+    },
+    (error) => {
+      console.error('Error subscribing to presence:', error);
       callback(null);
     }
-  }, (error) => {
-    console.error('Error subscribing to presence:', error);
-    callback(null);
-  });
-
-  // Store listener for cleanup
+  );
   const listenerId = `single-${userId}`;
   activeListeners.set(listenerId, unsubscribe);
-
   return () => {
     unsubscribe();
     activeListeners.delete(listenerId);
@@ -104,25 +117,30 @@ export function subscribeToMultiplePresences(
   userIds: string[],
   callback: (presences: Record<string, UserPresence | null>) => void
 ): () => void {
+  if (PRESENCE_V2) {
+    const unsub = subscribeToPresences(userIds, callback);
+    const listenerId = `multi-${userIds.join('-')}`;
+    activeListeners.set(listenerId, unsub);
+    return () => {
+      const u = activeListeners.get(listenerId);
+      if (u) u();
+      activeListeners.delete(listenerId);
+    };
+  }
+
   const presences: Record<string, UserPresence | null> = {};
   const unsubscribers: (() => void)[] = [];
-
-  // Subscribe to each user's presence
   userIds.forEach((userId) => {
     const unsubscribe = subscribeToUserPresence(userId, (presence) => {
       presences[userId] = presence;
-      callback({ ...presences }); // Trigger callback with updated presences
+      callback({ ...presences });
     });
     unsubscribers.push(unsubscribe);
   });
-
-  // Store listener group for cleanup
   const listenerId = `multi-${userIds.join('-')}`;
   activeListeners.set(listenerId, () => {
     unsubscribers.forEach((unsub) => unsub());
   });
-
-  // Return combined unsubscribe function
   return () => {
     unsubscribers.forEach((unsub) => unsub());
     activeListeners.delete(listenerId);
@@ -283,6 +301,9 @@ export function cleanupAllPresenceListeners(): void {
     unsubscribe();
   });
   activeListeners.clear();
+  if (PRESENCE_V2) {
+    cleanupPresenceRegistry();
+  }
   console.log('✅ All presence listeners cleaned up');
 }
 
