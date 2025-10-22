@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import Avatar from './Avatar';
 
 interface MemberWithRole extends User {
   role: 'admin' | 'team' | 'user';
@@ -135,11 +136,7 @@ export default function MemberManagementModal({
     return (
       <View style={styles.memberItem}>
         <View style={styles.memberInfo}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {item.displayName?.charAt(0).toUpperCase() || '?'}
-            </Text>
-          </View>
+          <Avatar user={item} size={45} />
           <View style={styles.memberDetails}>
             <Text style={styles.memberName}>
               {item.displayName}

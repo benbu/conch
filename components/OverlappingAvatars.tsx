@@ -1,6 +1,7 @@
 import { User } from '@/types';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Avatar from './Avatar';
 
 interface OverlappingAvatarsProps {
   members: User[];
@@ -49,27 +50,7 @@ export default function OverlappingAvatars({
               },
             ]}
           >
-            <View
-              style={[
-                styles.avatar,
-                {
-                  width: avatarSize,
-                  height: avatarSize,
-                  borderRadius: avatarSize / 2,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.avatarText,
-                  {
-                    fontSize: avatarSize * 0.4,
-                  },
-                ]}
-              >
-                {member.displayName?.charAt(0).toUpperCase() || '?'}
-              </Text>
-            </View>
+            <Avatar user={member} size={avatarSize} />
           </View>
         ))}
         {remainingCount > 0 && (

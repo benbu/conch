@@ -1,3 +1,4 @@
+import Avatar from '@/components/Avatar';
 import GroupNameModal from '@/components/GroupNameModal';
 import PresenceIndicator from '@/components/PresenceIndicator';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,14 +10,14 @@ import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  SectionList,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    SectionList,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 interface SearchSection {
@@ -259,11 +260,7 @@ export default function ExploreScreen() {
             </View>
           )}
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {userData.displayName?.charAt(0).toUpperCase()}
-              </Text>
-            </View>
+            <Avatar user={userData} size={50} />
             <View style={styles.presenceDot}>
               <PresenceIndicator userId={userData.id} user={userData} size="small" />
             </View>

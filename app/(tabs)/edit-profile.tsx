@@ -5,23 +5,24 @@
 
 import { useAuth } from '@/hooks/useAuth';
 import { auth, db } from '@/lib/firebase';
+import { uploadProfileImage } from '@/services/imageService';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, router } from 'expo-router';
 import { updateProfile } from 'firebase/auth';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function EditProfileScreen() {
@@ -55,18 +56,25 @@ export default function EditProfileScreen() {
     setLoading(true);
 
     try {
+      // If photoURL is a local file URI, upload to Storage first
+      let finalPhotoUrl: string | null = photoURL || null;
+      const isLocal = typeof photoURL === 'string' && (photoURL.startsWith('file:') || photoURL.startsWith('content:'));
+      if (isLocal) {
+        finalPhotoUrl = await uploadProfileImage(user.id, photoURL);
+      }
+
       // Update Firebase Auth profile
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, {
           displayName: displayName.trim(),
-          photoURL: photoURL || null,
+          photoURL: finalPhotoUrl,
         });
       }
 
-      // Update Firestore user document
+      // Update Firestore user document (source of truth for app)
       await updateDoc(doc(db, 'users', user.id), {
         displayName: displayName.trim(),
-        photoURL: photoURL || null,
+        photoURL: finalPhotoUrl,
         bio: bio.trim(),
         updatedAt: serverTimestamp(),
       });

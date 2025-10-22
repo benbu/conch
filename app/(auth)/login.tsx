@@ -1,17 +1,16 @@
 import { useAuth } from '@/hooks/useAuth';
-import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { Link } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function LoginScreen() {
@@ -19,7 +18,6 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
-  const { signInWithGoogle, isLoading: isGoogleLoading } = useGoogleAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -35,15 +33,6 @@ export default function LoginScreen() {
       Alert.alert('Login Failed', error.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    try {
-      await signInWithGoogle();
-      // The useGoogleAuth hook handles the rest (loading, error, success)
-    } catch (error: any) {
-      Alert.alert('Google Login Failed', error.message);
     }
   };
 
@@ -88,24 +77,6 @@ export default function LoginScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.buttonText}>Sign In</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.button, styles.secondaryButton]}
-            onPress={handleGoogleLogin}
-            disabled={loading || isGoogleLoading}
-          >
-            {isGoogleLoading ? (
-              <ActivityIndicator color="#333" />
-            ) : (
-              <Text style={styles.secondaryButtonText}>Continue with Google</Text>
             )}
           </TouchableOpacity>
 
