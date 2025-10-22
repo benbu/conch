@@ -4,6 +4,8 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { Stack } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -15,6 +17,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const AI_SETTINGS_KEY = 'ai_settings';
 
@@ -37,6 +40,9 @@ const DEFAULT_SETTINGS: AISettings = {
 };
 
 export default function AISettingsScreen() {
+  const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
   const [settings, setSettings] = useState<AISettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(false);
 
@@ -104,12 +110,11 @@ export default function AISettingsScreen() {
     <>
       <Stack.Screen
         options={{
-          title: 'AI Settings',
-          headerBackTitle: 'Back',
+          headerShown: false,
         }}
       />
       
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: tabBarHeight }}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>AI Features</Text>
           <Text style={styles.sectionDescription}>

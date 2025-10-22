@@ -28,7 +28,7 @@ const { token, notification, badgeCount, clearBadge } = useNotifications();
 
 ### ✅ Read Receipts (Complete)
 **Files Created:**
-- `services/readReceiptService.ts` - Read receipt tracking
+- Read receipts simplified: direct chats use `deliveryStatus: 'read'`; group chats do not track per-user reads
 
 **Features:**
 - Mark individual messages as read
@@ -119,7 +119,7 @@ Conch/
 │   └── useTypingIndicator.ts       # Typing hook
 └── services/
     ├── notificationService.ts      # FCM management
-    ├── readReceiptService.ts       # Read receipts
+    ├── (removed) readReceiptService.ts
     ├── typingIndicatorService.ts   # Typing status
     └── searchService.ts            # Global search
 ```
@@ -171,7 +171,7 @@ const { typingText, startTyping, stopTyping } = useTypingIndicator(conversationI
 ### Adding Read Receipts
 
 ```typescript
-import { markMessageAsRead, getUnreadCount } from '@/services/readReceiptService';
+// Read receipt service removed; direct chats set deliveryStatus to 'read' via firestoreService.updateMessageStatus
 
 // Mark message as read when viewed
 useEffect(() => {

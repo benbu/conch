@@ -275,6 +275,13 @@ export async function setUserOnline(userId: string): Promise<void> {
 }
 
 /**
+ * Heartbeat wrapper for clarity, currently maps to setUserOnline
+ */
+export async function heartbeat(userId: string): Promise<void> {
+  await setUserOnline(userId);
+}
+
+/**
  * Update custom status message
  */
 export async function updateCustomStatus(

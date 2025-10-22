@@ -1,25 +1,27 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, StyleSheet } from 'react-native';
 import 'react-native-reanimated';
 
 import { InAppNotification } from '@/components/InAppNotification';
 import { IN_APP_NOTIFICATIONS_ENABLED, LOCAL_NOTIFICATIONS_IN_EXPO_GO } from '@/constants/featureFlags';
+import { GLASS_INTENSITY, getGlassTint } from '@/constants/theme';
 import { AuthProvider, useAuthContext } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useNotifications } from '@/hooks/useNotifications';
+import { usePresenceHeartbeat } from '@/hooks/usePresenceHeartbeat';
 import {
   startMessageNotificationListener,
   stopMessageNotificationListener,
 } from '@/services/messageNotificationService';
 import {
-  setUserAway,
   setUserOnline,
   startPresenceTracking,
-  stopPresenceTracking,
-  updatePresence
+  stopPresenceTracking
 } from '@/services/presenceService';
 import { selectAuthLoading, selectUser, useAuthStore } from '@/stores/authStore';
 import { selectCurrentConversationId, useChatStore } from '@/stores/chatStore';
@@ -115,46 +117,19 @@ function RootNavigator() {
       console.error('Failed to start presence tracking:', error);
     });
 
+    // Send a one-time heartbeat on login
+    if (!user.appearOffline) {
+      setUserOnline(user.id).catch(() => {});
+    }
+
     // Start listening for new messages (for in-app notifications in Expo Go)
     // In production builds with FCM, this provides a fallback
     if (IN_APP_NOTIFICATIONS_ENABLED || LOCAL_NOTIFICATIONS_IN_EXPO_GO) {
       startMessageNotificationListener();
     }
 
-    // Handle app state changes
+    // Minimal app state change handler just to keep reference; presence handled in usePresenceHeartbeat
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
-      if (!user) return;
-
-      // Clear any existing away timer
-      if (awayTimerRef.current) {
-        clearTimeout(awayTimerRef.current);
-        awayTimerRef.current = null;
-      }
-
-      // App is coming to foreground
-      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        if (!user.appearOffline) {
-          await setUserOnline(user.id).catch(console.error);
-        }
-      }
-
-      // App is going to background
-      if (appState.current === 'active' && nextAppState.match(/inactive|background/)) {
-        if (!user.appearOffline) {
-          // Set offline immediately when app goes to background
-          await updatePresence(user.id, 'offline').catch(console.error);
-        }
-      }
-
-      // App is active - set up away timer after 5 minutes
-      if (nextAppState === 'active' && !user.appearOffline) {
-        awayTimerRef.current = setTimeout(() => {
-          if (!user.appearOffline) {
-            setUserAway(user.id).catch(console.error);
-          }
-        }, 5 * 60 * 1000); // 5 minutes
-      }
-
       appState.current = nextAppState;
     });
 
@@ -170,6 +145,9 @@ function RootNavigator() {
       }
     };
   }, [user]);
+
+  // Centralized activity-gated heartbeat
+  usePresenceHeartbeat(user?.id, user?.appearOffline);
 
   // Handle notification navigation
   const handleNotificationPress = () => {
@@ -189,25 +167,51 @@ function RootNavigator() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="chat/[id]" options={{ headerShown: true, title: 'Chat' }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Settings' }} />
-      </Stack>
-      <StatusBar style="auto" />
-      
-      {/* In-app notification banner (feature-flagged) */}
-      {IN_APP_NOTIFICATIONS_ENABLED && notificationData && (
-        <InAppNotification
-          visible={showNotification}
-          title={notificationData.title}
-          message={notificationData.message}
-          conversationId={notificationData.conversationId}
-          onPress={handleNotificationPress}
-          onDismiss={handleNotificationDismiss}
-        />
-      )}
+      <LinearGradient
+        colors={[ 'rgb(100, 38, 201)', 'rgb(170, 228, 238)' ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ flex: 1 }}
+      >
+        <Stack
+          screenOptions={{
+            animation: 'fade',
+            headerShown: false,
+            contentStyle: { backgroundColor: 'transparent' },
+          }}
+        >
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="chat/[id]"
+            options={{
+              headerShown: true,
+              headerTransparent: true,
+              headerBackground: () => (
+                <BlurView
+                  tint={getGlassTint(colorScheme === 'dark')}
+                  intensity={GLASS_INTENSITY}
+                  style={StyleSheet.absoluteFill}
+                />
+              ),
+            }}
+          />
+          <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: false }} />
+        </Stack>
+        <StatusBar style="auto" />
+        
+        {/* In-app notification banner (feature-flagged) */}
+        {IN_APP_NOTIFICATIONS_ENABLED && notificationData && (
+          <InAppNotification
+            visible={showNotification}
+            title={notificationData.title}
+            message={notificationData.message}
+            conversationId={notificationData.conversationId}
+            onPress={handleNotificationPress}
+            onDismiss={handleNotificationDismiss}
+          />
+        )}
+      </LinearGradient>
     </ThemeProvider>
   );
 }

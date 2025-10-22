@@ -4,6 +4,8 @@
  */
 
 import { globalSearch, SearchResult } from '@/services/searchService';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { router, Stack } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -15,8 +17,12 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SearchScreen() {
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -83,15 +89,11 @@ export default function SearchScreen() {
     <>
       <Stack.Screen
         options={{
-          title: 'Search',
-          headerSearchBarOptions: {
-            placeholder: 'Search messages, conversations, users...',
-            onChangeText: (event) => handleSearch(event.nativeEvent.text),
-          },
+          headerShown: false,
         }}
       />
       
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top + 12, paddingBottom: tabBarHeight }] }>
         {/* Search Input (for Android) */}
         {/* Note: iOS uses headerSearchBarOptions */}
         <View style={styles.searchContainer}>
@@ -102,6 +104,7 @@ export default function SearchScreen() {
             onChangeText={handleSearch}
             autoCapitalize="none"
             autoCorrect={false}
+            underlineColorAndroid="transparent"
           />
         </View>
 
@@ -135,17 +138,19 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
   },
   searchContainer: {
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    backgroundColor: 'transparent',
+    borderBottomWidth: 0,
+    borderBottomColor: 'transparent',
   },
   searchInput: {
     height: 40,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderColor: 'transparent',
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 16,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, FlatList } from 'react-native';
+import { ActivityIndicator, FlatList, View } from 'react-native';
 import { Message } from '../../types';
 
 export function MessageList({
@@ -10,6 +10,8 @@ export function MessageList({
   onViewableItemsChanged,
   viewabilityConfig,
   loadingMore,
+  headerSpacerHeight = 0,
+  footerSpacerHeight = 0,
 }: any) {
   return (
     <FlatList
@@ -29,7 +31,13 @@ export function MessageList({
           flatListRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.5 });
         }, 100);
       }}
-      ListHeaderComponent={loadingMore ? <ActivityIndicator style={{ paddingVertical: 16 }} /> : null}
+      ListHeaderComponent={
+        <>
+          {headerSpacerHeight > 0 ? <View style={{ height: headerSpacerHeight }} /> : null}
+          {loadingMore ? <ActivityIndicator style={{ paddingVertical: 16 }} /> : null}
+        </>
+      }
+      ListFooterComponent={footerSpacerHeight > 0 ? <View style={{ height: footerSpacerHeight }} /> : null}
     />
   );
 }

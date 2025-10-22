@@ -3,18 +3,24 @@ import { IN_APP_NOTIFICATIONS_ENABLED } from '@/constants/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useChatStore } from '@/stores/chatStore';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
+  const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
   const { clearChat } = useChatStore();
   const router = useRouter();
@@ -47,7 +53,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView testID="profile-screen" style={styles.container}>
+    <ScrollView testID="profile-screen" style={styles.container} contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: tabBarHeight }}>
       <View style={styles.header}>
         <Avatar user={user} size={100} />
         <Text style={styles.displayName}>{user.displayName}</Text>
