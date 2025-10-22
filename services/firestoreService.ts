@@ -212,6 +212,11 @@ export async function getMessages(
           text: data.text,
           attachments: data.attachments,
           deliveryStatus: data.deliveryStatus,
+          readBy: data.readBy
+            ? Object.fromEntries(
+                Object.entries(data.readBy).map(([k, v]: any) => [k, v?.toDate ? v.toDate() : v])
+              )
+            : undefined,
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate(),
         };
@@ -251,6 +256,11 @@ export async function getMessagesBefore(
           text: data.text,
           attachments: data.attachments,
           deliveryStatus: data.deliveryStatus,
+          readBy: data.readBy
+            ? Object.fromEntries(
+                Object.entries(data.readBy).map(([k, v]: any) => [k, v?.toDate ? v.toDate() : v])
+              )
+            : undefined,
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate(),
         };
@@ -284,6 +294,11 @@ export function subscribeToMessages(
         text: data.text,
         attachments: data.attachments,
         deliveryStatus: data.deliveryStatus,
+        readBy: data.readBy
+          ? Object.fromEntries(
+              Object.entries(data.readBy).map(([k, v]: any) => [k, v?.toDate ? v.toDate() : v])
+            )
+          : undefined,
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate(),
       };
