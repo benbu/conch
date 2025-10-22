@@ -1,12 +1,13 @@
 // Hook for managing offline message queue
 import { useCallback, useEffect } from 'react';
 import { sendMessage as sendMessageToFirestore } from '../services/firestoreService';
+import { createOptimisticMessage } from '../services/messages/messageFactory';
 import {
-    addToQueue,
-    getQueueStats,
-    getRetryableMessages,
-    removeFromQueue,
-    updateRetryCount,
+  addToQueue,
+  getQueueStats,
+  getRetryableMessages,
+  removeFromQueue,
+  updateRetryCount,
 } from '../services/offlineQueueService';
 import { selectUser, useAuthStore } from '../stores/authStore';
 import { useChatStore } from '../stores/chatStore';
@@ -96,18 +97,9 @@ export function useOfflineQueue() {
         },
       });
 
-      // Add optimistic message to UI
-      addMessage(conversationId, {
-        id: localId,
-        conversationId,
-        senderId: user.id,
-        sender: user,
-        text,
-        attachments: attachments || [],
-        deliveryStatus: 'sending',
-        createdAt: new Date(),
-        localId,
-      });
+      // Add optimistic message to UI using factory
+      const optimistic = createOptimisticMessage(conversationId, user, text, attachments);
+      addMessage(conversationId, { ...optimistic, id: localId, localId });
 
       return localId;
     },

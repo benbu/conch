@@ -7,8 +7,10 @@ import { ConnectionBanner } from '@/components/ConnectionBanner';
 import GroupNameModal from '@/components/GroupNameModal';
 import MemberManagementModal from '@/components/MemberManagementModal';
 import { MessageBubble } from '@/components/MessageBubble';
-import OverlappingAvatars from '@/components/OverlappingAvatars';
-import PresenceIndicator from '@/components/PresenceIndicator';
+import { ChatHeaderAvatars } from '@/components/chat/ChatHeaderAvatars';
+import { FloatingTitleBar as FloatingTitleBarComp } from '@/components/chat/FloatingTitleBar';
+import { InputBar as InputBarComp } from '@/components/chat/InputBar';
+import { MessageList as MessageListComp } from '@/components/chat/MessageList';
 import { useAIActions } from '@/hooks/useAIActions';
 import { useAIDecisions } from '@/hooks/useAIDecisions';
 import { useAIPriority } from '@/hooks/useAIPriority';
@@ -17,9 +19,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
 import { useMessages } from '@/hooks/useMessages';
 import { useUserPresence } from '@/hooks/usePresence';
+import { useViewableReadReceipts } from '@/hooks/useViewableReadReceipts';
 import { pickImageFromGallery, uploadConversationImage } from '@/services/imageService';
 import { setCurrentConversation } from '@/services/messageNotificationService';
-import { markMessageAsRead } from '@/services/readReceiptService';
 import { useChatStore } from '@/stores/chatStore';
 import { Message, User } from '@/types';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -32,9 +34,8 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 export default function ChatScreen() {
@@ -54,11 +55,15 @@ export default function ChatScreen() {
   const [showGroupNameModal, setShowGroupNameModal] = useState(false);
   const [showAddMemberSearch, setShowAddMemberSearch] = useState(false);
   const [didScrollToUnread, setDidScrollToUnread] = useState(false);
-  const markedAsReadRef = React.useRef(new Set<string>());
   
   const flatListRef = React.useRef<FlatList>(null);
   const router = useRouter();
   const { user } = useAuth();
+  // Read receipts on viewability
+  const { onViewableItemsChanged, viewabilityConfig } = useViewableReadReceipts(
+    conversationId,
+    user?.id
+  );
   const { messages, loading, loadingMore, hasMore, sendMessage, loadMoreMessages } = useMessages(conversationId);
   const { updateGroupName, addGroupMember, updateMemberRole, leaveGroup, removeMember } = useConversations();
   const conversation = useChatStore((state) =>
@@ -292,25 +297,7 @@ export default function ChatScreen() {
     }
   };
 
-  // Mark messages as read when sufficiently visible
-  const onViewableItemsChanged = React.useRef(({ viewableItems }: any) => {
-    if (!conversationId || !user) return;
-    viewableItems.forEach((vi: any) => {
-      const item: Message | undefined = vi?.item;
-      if (!item) return;
-      if (item.senderId === user.id) return;
-      const already = markedAsReadRef.current.has(item.id);
-      const isUnread = !item.readBy || !item.readBy[user.id];
-      if (!already && isUnread) {
-        markedAsReadRef.current.add(item.id);
-        markMessageAsRead(conversationId, item.id).catch(() => {
-          // ignore errors; will retry on next visibility
-          markedAsReadRef.current.delete(item.id);
-        });
-      }
-    });
-  });
-  const viewabilityConfig = { itemVisiblePercentThreshold: 60 } as const;
+  
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isOwn = item.senderId === user?.id;
@@ -358,81 +345,27 @@ export default function ChatScreen() {
   }
 
   // Custom header title - centered avatars
-  const HeaderTitle = () => {
-    if (conversation?.type === 'group') {
-      return (
-        <OverlappingAvatars
-          members={participants}
-          maxVisible={3}
-          size="small"
-          onPress={() => setShowMemberManagement(true)}
-        />
-      );
-    }
-
-    // Direct chat - single avatar
-    if (otherUser) {
-      return (
-        <View style={styles.singleAvatarContainer}>
-          <View style={styles.singleAvatar}>
-            <Text style={styles.singleAvatarText}>
-              {otherUser.displayName?.charAt(0).toUpperCase() || '?'}
-            </Text>
-          </View>
-        </View>
-      );
-    }
-    
-    return null;
-  };
+  const HeaderTitle = () => (
+    <ChatHeaderAvatars
+      type={conversation?.type}
+      participants={participants}
+      otherUser={otherUser}
+      onPressGroup={() => setShowMemberManagement(true)}
+    />
+  );
 
   // Floating title bar component
-  const FloatingTitleBar = () => {
-    if (conversation?.type === 'group') {
-      return (
-        <TouchableOpacity 
-          style={styles.floatingTitleBar}
-          onPress={() => {
-            if (currentUserRole === 'admin') {
-              setShowGroupNameModal(true);
-            }
-          }}
-          activeOpacity={currentUserRole === 'admin' ? 0.7 : 1}
-        >
-          <Text style={styles.floatingTitle}>
-            {conversation.name || conversation.title || 'Group Chat'}
-          </Text>
-          <Text style={styles.floatingSubtitle}>
-            {participants.length} member{participants.length !== 1 ? 's' : ''}
-          </Text>
-        </TouchableOpacity>
-      );
-    }
-
-    // Direct chat
-    if (otherUser) {
-      const effectiveStatus = otherUser?.appearOffline ? 'offline' : presence?.status || 'offline';
-      
-      return (
-        <View style={styles.floatingTitleBar}>
-          <Text style={styles.floatingTitle}>
-            {otherUser.displayName || 'Chat'}
-          </Text>
-          <View style={styles.floatingPresence}>
-            <PresenceIndicator userId={otherUser.id} user={otherUser} size="small" />
-            <Text style={styles.floatingPresenceText}>
-              {effectiveStatus === 'online' ? 'Online' : effectiveStatus === 'away' ? 'Away' : 'Offline'}
-            </Text>
-            {presence?.customStatus && (
-              <Text style={styles.floatingCustomStatus}> • {presence.customStatus}</Text>
-            )}
-          </View>
-        </View>
-      );
-    }
-
-    return null;
-  };
+  const FloatingTitleBar = () => (
+    <FloatingTitleBarComp
+      type={conversation?.type}
+      conversation={conversation}
+      participantsCount={participants.length}
+      currentUserRole={currentUserRole}
+      onEditGroup={() => setShowGroupNameModal(true)}
+      otherUser={otherUser}
+      presence={presence}
+    />
+  );
 
   return (
     <>
@@ -456,67 +389,23 @@ export default function ChatScreen() {
         keyboardVerticalOffset={100}
       >
         <FloatingTitleBar />
-        <FlatList
-          ref={flatListRef}
-          testID="chat-messages-list"
-          data={messages}
+        <MessageListComp
+          flatListRef={flatListRef}
+          messages={messages}
           renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messageList}
-          inverted={false}
           onScroll={onScroll}
-          scrollEventThrottle={16}
-          onViewableItemsChanged={onViewableItemsChanged.current}
+          onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
-          onScrollToIndexFailed={(info) => {
-            // Handle scroll failure by trying again
-            setTimeout(() => {
-              flatListRef.current?.scrollToIndex({
-                index: info.index,
-                animated: true,
-                viewPosition: 0.5,
-              });
-            }, 100);
-          }}
-          ListHeaderComponent={
-            loadingMore ? <ActivityIndicator style={styles.loadingMore} /> : null
-          }
+          loadingMore={loadingMore}
         />
 
-        <View style={styles.inputContainer}>
-          <TouchableOpacity 
-            testID="chat-image-button"
-            style={styles.imageButton}
-            onPress={handleImagePick}
-            disabled={uploading}
-          >
-            <Text style={styles.imageButtonText}>📷</Text>
-          </TouchableOpacity>
-          
-          <TextInput
-            testID="chat-message-input"
-            style={styles.input}
-            placeholder="Type a message..."
-            value={messageText}
-            onChangeText={setMessageText}
-            multiline
-            maxLength={1000}
-            editable={!uploading}
-          />
-          
-          <TouchableOpacity
-            testID="chat-send-button"
-            style={[styles.sendButton, (!messageText.trim() || uploading) && styles.sendButtonDisabled]}
-            onPress={handleSend}
-            disabled={!messageText.trim() || uploading}
-          >
-            {uploading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.sendButtonText}>Send</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+        <InputBarComp
+          uploading={uploading}
+          onPickImage={handleImagePick}
+          messageText={messageText}
+          setMessageText={setMessageText}
+          onSend={handleSend}
+        />
       </KeyboardAvoidingView>
 
       {/* AI Feature Menu */}
