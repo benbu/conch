@@ -2,16 +2,17 @@ import { useAuth } from '@/hooks/useAuth';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function SignupScreen() {
@@ -62,6 +63,12 @@ export default function SignupScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
+          <Image
+            source={require('@/assets/images/logo3.png')}
+            style={styles.logo}
+            resizeMode="contain"
+            accessibilityLabel="Conch logo"
+          />
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Join Conch today</Text>
 
@@ -138,7 +145,7 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     flexGrow: 1,
@@ -148,6 +155,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
     paddingVertical: 40,
+  },
+  logo: {
+    width: 96,
+    height: 96,
+    alignSelf: 'center',
+    marginBottom: 16,
   },
   title: {
     fontSize: 32,

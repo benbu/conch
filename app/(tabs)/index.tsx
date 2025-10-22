@@ -8,6 +8,8 @@ import { searchUsers as searchUsersFirestore } from '@/services/firestoreService
 import { SearchResult, searchUsers as searchUsersGlobal } from '@/services/searchService';
 import { useChatStore } from '@/stores/chatStore';
 import { Conversation, User } from '@/types';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -21,8 +23,12 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ChatsScreen() {
+  const headerHeight = useHeaderHeight();
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { conversations, createConversation } = useConversations();
   const { user } = useAuth();
   const router = useRouter();
@@ -209,14 +215,14 @@ export default function ChatsScreen() {
           data={conversations}
           renderItem={renderConversation}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingTop: insets.top + 12, paddingBottom: tabBarHeight + 16 }]}
         />
       )}
 
       {/* Floating New Chat Button */}
       <TouchableOpacity
         testID="new-conversation-button"
-        style={styles.fab}
+        style={[styles.fab, { bottom: tabBarHeight + 16 }]}
         onPress={() => {
           setSearchQuery('');
           setRemoteUsers([]);
@@ -302,7 +308,7 @@ export default function ChatsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
   },
   centered: {
     flex: 1,
@@ -390,8 +396,6 @@ const styles = StyleSheet.create({
   conversationItem: {
     flexDirection: 'row',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   avatarContainer: {
     position: 'relative',
@@ -439,11 +443,11 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 12,
-    color: '#999',
+    color: '#000',
   },
   lastMessage: {
     fontSize: 14,
-    color: '#666',
+    color: '#222',
   },
   unreadBadge: {
     position: 'absolute',

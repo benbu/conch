@@ -6,6 +6,8 @@
 import { useAuth } from '@/hooks/useAuth';
 import { auth, db } from '@/lib/firebase';
 import { uploadProfileImage } from '@/services/imageService';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useHeaderHeight } from '@react-navigation/elements';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, router } from 'expo-router';
 import { updateProfile } from 'firebase/auth';
@@ -24,6 +26,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function EditProfileScreen() {
   const { user } = useAuth();
@@ -31,6 +34,9 @@ export default function EditProfileScreen() {
   const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
   const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(false);
+  const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -93,8 +99,7 @@ export default function EditProfileScreen() {
     <>
       <Stack.Screen
         options={{
-          title: 'Edit Profile',
-          headerBackTitle: 'Back',
+          headerShown: false,
         }}
       />
       
@@ -102,7 +107,7 @@ export default function EditProfileScreen() {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: tabBarHeight }]}>
           {/* Profile Photo */}
           <View style={styles.photoSection}>
             <TouchableOpacity onPress={handlePickImage} style={styles.photoButton}>

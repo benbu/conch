@@ -11,6 +11,8 @@ import { ChatHeaderAvatars } from '@/components/chat/ChatHeaderAvatars';
 import { FloatingTitleBar as FloatingTitleBarComp } from '@/components/chat/FloatingTitleBar';
 import { InputBar as InputBarComp } from '@/components/chat/InputBar';
 import { MessageList as MessageListComp } from '@/components/chat/MessageList';
+import { GLASS_INTENSITY, getGlassTint } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAIActions } from '@/hooks/useAIActions';
 import { useAIDecisions } from '@/hooks/useAIDecisions';
 import { useAIPriority } from '@/hooks/useAIPriority';
@@ -24,12 +26,16 @@ import { pickImageFromGallery, uploadConversationImage } from '@/services/imageS
 import { setCurrentConversation } from '@/services/messageNotificationService';
 import { useChatStore } from '@/stores/chatStore';
 import { Message, User } from '@/types';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { format } from 'date-fns';
+import { BlurView } from 'expo-blur';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -39,6 +45,9 @@ import {
 } from 'react-native';
 
 export default function ChatScreen() {
+  const colorScheme = useColorScheme();
+  const headerHeight = useHeaderHeight();
+  const [inputBarHeight, setInputBarHeight] = React.useState(0);
   const params = useLocalSearchParams<{ id?: string | string[]; messageId?: string | string[] }>();
   const conversationId = Array.isArray(params.id) ? params.id?.[0] ?? null : params.id ?? null;
   const targetMessageId = Array.isArray(params.messageId) ? params.messageId?.[0] : params.messageId;
@@ -55,20 +64,22 @@ export default function ChatScreen() {
   const [showGroupNameModal, setShowGroupNameModal] = useState(false);
   const [showAddMemberSearch, setShowAddMemberSearch] = useState(false);
   const [didScrollToUnread, setDidScrollToUnread] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   
   const flatListRef = React.useRef<FlatList>(null);
   const router = useRouter();
   const { user } = useAuth();
-  // Read receipts on viewability
-  const { onViewableItemsChanged, viewabilityConfig } = useViewableReadReceipts(
-    conversationId,
-    user?.id
-  );
-  const { messages, loading, loadingMore, hasMore, sendMessage, loadMoreMessages } = useMessages(conversationId);
-  const { updateGroupName, addGroupMember, updateMemberRole, leaveGroup, removeMember } = useConversations();
   const conversation = useChatStore((state) =>
     conversationId ? state.conversations.find((c) => c.id === conversationId) : undefined
   );
+  // Read receipts on viewability
+  const { onViewableItemsChanged, viewabilityConfig } = useViewableReadReceipts(
+    conversationId,
+    user?.id,
+    conversation?.type
+  );
+  const { messages, loading, loadingMore, hasMore, sendMessage, loadMoreMessages } = useMessages(conversationId);
+  const { updateGroupName, addGroupMember, updateMemberRole, leaveGroup, removeMember } = useConversations();
 
   // Get conversation participants
   const conversationParticipants = useChatStore((state) => state.conversationParticipants);
@@ -150,9 +161,13 @@ export default function ChatScreen() {
       // Attempt up to 10 pagination steps to find the oldest unread
       for (let i = 0; i < 10; i++) {
         const currentMessages = useChatStore.getState().getMessagesByConversationId(conversationId);
-        const idx = currentMessages.findIndex(
-          (m) => m.senderId !== user.id && (!m.readBy || !m.readBy[user.id])
-        );
+        let idx = -1;
+        if (conversation?.type === 'direct') {
+          idx = currentMessages.findIndex(
+            (m) => m.senderId !== user.id && m.deliveryStatus !== 'read'
+          );
+        }
+        // Groups: skip scroll-to-unread based on read receipts
         if (idx !== -1) {
           // Align the oldest unread to the top of the view
           setTimeout(() => {
@@ -297,6 +312,18 @@ export default function ChatScreen() {
     }
   };
 
+  // Track keyboard visibility to adjust bottom spacer
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent as any, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent as any, () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
@@ -307,9 +334,30 @@ export default function ChatScreen() {
     // Determine if we should show avatar for this message
     const previousMessage = index > 0 ? messages[index - 1] : null;
     const showAvatar = !isOwn && (!previousMessage || previousMessage.senderId !== item.senderId);
+    const isStartOfSenderBlock = !previousMessage || previousMessage.senderId !== item.senderId;
     // Ensure the Avatar receives a full user object; fall back to participants by senderId
     const senderUser = item.sender ?? (participants as any[]).find((p: any) => p.id === item.senderId);
     const enrichedMessage = senderUser ? { ...item, sender: senderUser } : item;
+    // Metadata flags
+    const showSenderAbove = conversation?.type === 'group' && !isOwn && isStartOfSenderBlock;
+    const toDate = (v: any): Date | null => {
+      if (v instanceof Date) return v;
+      if (typeof v === 'number') return new Date(v);
+      if (typeof v === 'string') {
+        const t = Date.parse(v);
+        return isNaN(t) ? null : new Date(t);
+      }
+      if (v && typeof v === 'object' && typeof v.toDate === 'function') {
+        try { return v.toDate(); } catch {}
+      }
+      return null;
+    };
+    const createdAt = toDate(item.createdAt);
+    const prevCreatedAt = previousMessage ? toDate(previousMessage.createdAt) : null;
+    const showTimestampBelow = prevCreatedAt && createdAt
+      ? (createdAt.getTime() - prevCreatedAt.getTime()) >= 5 * 60 * 1000
+      : true;
+    const timestampText = createdAt && showTimestampBelow ? format(createdAt, 'HH:mm') : undefined;
     
     return (
       <View style={isHighlighted ? styles.highlightedMessageContainer : undefined}>
@@ -323,6 +371,10 @@ export default function ChatScreen() {
           message={enrichedMessage} 
           isOwn={isOwn} 
           showAvatar={showAvatar}
+          showSenderAbove={showSenderAbove}
+          showTimestampBelow={showTimestampBelow}
+          timestampText={timestampText}
+          conversationType={conversation?.type}
           onRetry={handleRetry} 
         />
       </View>
@@ -372,6 +424,17 @@ export default function ChatScreen() {
     <>
       <Stack.Screen
         options={{
+          animation: 'fade',
+          freezeOnBlur: true,
+          headerTransparent: true,
+          contentStyle: { backgroundColor: 'transparent' },
+          headerBackground: () => (
+            <BlurView
+              tint={getGlassTint(colorScheme === 'dark')}
+              intensity={GLASS_INTENSITY}
+              style={StyleSheet.absoluteFill}
+            />
+          ),
           headerTitle: () => <HeaderTitle />,
           headerRight: () => (
             <TouchableOpacity
@@ -387,7 +450,7 @@ export default function ChatScreen() {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={100}
+        keyboardVerticalOffset={headerHeight}
       >
         <FloatingTitleBar />
         <MessageListComp
@@ -398,15 +461,24 @@ export default function ChatScreen() {
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           loadingMore={loadingMore}
+          headerSpacerHeight={headerHeight}
+          footerSpacerHeight={keyboardVisible ? 0 : inputBarHeight}
         />
 
-        <InputBarComp
-          uploading={uploading}
-          onPickImage={handleImagePick}
-          messageText={messageText}
-          setMessageText={setMessageText}
-          onSend={handleSend}
-        />
+        <View
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h && Math.abs(h - inputBarHeight) > 1) setInputBarHeight(h);
+          }}
+        >
+          <InputBarComp
+            uploading={uploading}
+            onPickImage={handleImagePick}
+            messageText={messageText}
+            setMessageText={setMessageText}
+            onSend={handleSend}
+          />
+        </View>
       </KeyboardAvoidingView>
 
       {/* AI Feature Menu */}
@@ -492,7 +564,7 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
   },
   centered: {
     flex: 1,

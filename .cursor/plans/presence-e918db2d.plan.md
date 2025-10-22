@@ -1,4 +1,4 @@
-<!-- e918db2d-9698-4be6-820f-69506b7d2868 41cbbbfd-3e65-4556-bd46-3c3d6a8058a8 -->
+<!-- e918db2d-9698-4be6-820f-69506b7d2868 a427ead6-ac21-4f96-89a1-8a08651203f4 -->
 # Presence Heartbeat and Activity Updates
 
 ## Scope
@@ -54,8 +54,17 @@ const { onActivity } = usePresenceHeartbeatContext(); // or import a simple emit
 
 ## Notes
 
-- No gesture stealing: rely on keyboard + periodic timer + explicit calls in high-traffic components (chat input, send) instead of a global touch-capture wrapper.
-- Can extend later to lightweight global touch via gesture-handler if needed.
+- Activity-gated: no unconditional interval heartbeats. Only send if there was interaction within the last 15s, with at most one heartbeat per 15s.
+- Avoid gesture stealing; rely on keyboard + explicit emits in key components and a lightweight scheduler; can add global touch later if needed.
+
+## Updated Implementation Details
+
+- Track `lastInteractionAt` and `lastHeartbeatAt`
+- On any interaction: set `lastInteractionAt`; if `now - lastHeartbeatAt >= 15s` then send heartbeat immediately
+- Scheduler (5s while active): if `lastInteractionAt > lastHeartbeatAt` AND `now - lastHeartbeatAt >= 15s`, send heartbeat
+- On login: after `startPresenceTracking`, call `setUserOnline(user.id)` once
+- Reset away timer on any interaction/heartbeat; set away after 5 min of inactivity
+- Background: cancel timers and set `offline` immediately
 
 ### To-dos
 

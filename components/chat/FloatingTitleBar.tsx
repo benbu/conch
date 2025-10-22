@@ -1,4 +1,7 @@
-import { Text, TouchableOpacity, View } from 'react-native';
+import { GLASS_INTENSITY, getGlassBg, getGlassBorder, getGlassTint } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { BlurView } from 'expo-blur';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import PresenceIndicator from '../PresenceIndicator';
 
 export function FloatingTitleBar({
@@ -10,33 +13,31 @@ export function FloatingTitleBar({
   otherUser,
   presence,
 }: any) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   if (type === 'group') {
     return (
       <TouchableOpacity
-        style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          paddingVertical: 12,
-          paddingHorizontal: 16,
-          alignItems: 'center',
-          borderBottomWidth: 1,
-          borderBottomColor: 'rgba(0, 0, 0, 0.05)',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 3,
-          elevation: 3,
-        }}
+        style={{ overflow: 'hidden' }}
         onPress={() => {
           if (currentUserRole === 'admin') onEditGroup?.();
         }}
         activeOpacity={currentUserRole === 'admin' ? 0.7 : 1}
       >
-        <Text style={{ fontSize: 16, fontWeight: '600', color: '#000' }}>
-          {conversation.name || conversation.title || 'Group Chat'}
-        </Text>
-        <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
-          {participantsCount} member{participantsCount !== 1 ? 's' : ''}
-        </Text>
+        <BlurView
+          tint={getGlassTint(isDark)}
+          intensity={GLASS_INTENSITY}
+          style={styles.glassContainer}
+        >
+          <View style={[styles.glassInner, { borderBottomColor: getGlassBorder(isDark), backgroundColor: getGlassBg(isDark) }]}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#000' }}>
+              {conversation.name || conversation.title || 'Group Chat'}
+            </Text>
+            <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
+              {participantsCount} member{participantsCount !== 1 ? 's' : ''}
+            </Text>
+          </View>
+        </BlurView>
       </TouchableOpacity>
     );
   }
@@ -44,36 +45,42 @@ export function FloatingTitleBar({
   if (otherUser) {
     const effectiveStatus = otherUser?.appearOffline ? 'offline' : presence?.status || 'offline';
     return (
-      <View style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0, 0, 0, 0.05)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 3,
-      }}>
-        <Text style={{ fontSize: 16, fontWeight: '600', color: '#000' }}>
-          {otherUser.displayName || 'Chat'}
-        </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-          <PresenceIndicator userId={otherUser.id} user={otherUser} size="small" />
-          <Text style={{ fontSize: 13, color: '#666', marginLeft: 4 }}>
-            {effectiveStatus === 'online' ? 'Online' : effectiveStatus === 'away' ? 'Away' : 'Offline'}
+      <BlurView
+        tint={getGlassTint(isDark)}
+        intensity={GLASS_INTENSITY}
+        style={styles.glassContainer}
+      >
+        <View style={[styles.glassInner, { borderBottomColor: getGlassBorder(isDark), backgroundColor: getGlassBg(isDark) }]}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#000' }}>
+            {otherUser.displayName || 'Chat'}
           </Text>
-          {presence?.customStatus && (
-            <Text style={{ fontSize: 13, color: '#999' }}> • {presence.customStatus}</Text>
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+            <PresenceIndicator userId={otherUser.id} user={otherUser} size="small" />
+            <Text style={{ fontSize: 13, color: '#666', marginLeft: 4 }}>
+              {effectiveStatus === 'online' ? 'Online' : effectiveStatus === 'away' ? 'Away' : 'Offline'}
+            </Text>
+            {presence?.customStatus && (
+              <Text style={{ fontSize: 13, color: '#999' }}> • {presence.customStatus}</Text>
+            )}
+          </View>
         </View>
-      </View>
+      </BlurView>
     );
   }
 
   return null;
 }
+
+const styles = StyleSheet.create({
+  glassContainer: {
+    overflow: 'hidden',
+  },
+  glassInner: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+});
 
 

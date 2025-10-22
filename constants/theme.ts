@@ -51,3 +51,19 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
+
+// Glassmorphism helpers
+export const GLASS_INTENSITY = 50;
+
+export function getGlassTint(isDark: boolean): 'dark' | 'light' {
+  return isDark ? 'dark' as const : 'light' as const;
+}
+
+export function getGlassBg(isDark: boolean): string {
+  // Slight base tint to ensure readability beneath blur on Android/Web
+  return isDark ? 'rgba(20,20,20,0.6)' : 'rgba(255,255,255,0.6)';
+}
+
+export function getGlassBorder(isDark: boolean): string {
+  return isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)';
+}

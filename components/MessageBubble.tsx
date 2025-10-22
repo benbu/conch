@@ -1,5 +1,4 @@
 // Message bubble component with status indicators
-import { format } from 'date-fns';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Message } from '../types';
@@ -11,10 +10,29 @@ interface MessageBubbleProps {
   showAvatar?: boolean;
   onImagePress?: (imageUrl: string) => void;
   onRetry?: (messageId: string) => void;
+  showSenderAbove?: boolean;
+  showTimestampBelow?: boolean;
+  timestampText?: string;
+  conversationType?: 'direct' | 'group';
 }
 
-export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetry }: MessageBubbleProps) {
+export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetry, showSenderAbove, showTimestampBelow, timestampText, conversationType }: MessageBubbleProps) {
   const renderStatusIcon = () => {
+    // In group chats, only show minimal status for own messages
+    if (conversationType === 'group') {
+      if (!isOwn) return null;
+      if (message.deliveryStatus === 'sending') return <Text style={styles.statusIcon}>⏱️</Text>;
+      if (message.deliveryStatus === 'failed') {
+        return (
+          <TouchableOpacity onPress={() => onRetry?.(message.id)}>
+            <Text style={[styles.statusIcon, styles.failedStatus]}>⚠️</Text>
+          </TouchableOpacity>
+        );
+      }
+      // Treat any other states as sent for UI simplicity
+      return <Text style={styles.statusIcon}>✓</Text>;
+    }
+
     switch (message.deliveryStatus) {
       case 'sending':
         return <Text style={styles.statusIcon}>⏱️</Text>;
@@ -35,6 +53,37 @@ export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetr
     }
   };
 
+  const renderInlineStatusSpan = () => {
+    if (!isOwn) return null;
+    if (conversationType === 'group') {
+      if (message.deliveryStatus === 'sending') return <Text style={styles.statusIconInline}>⏱️</Text>;
+      if (message.deliveryStatus === 'failed') return <Text style={[styles.statusIconInline, styles.failedStatus]}>⚠️</Text>;
+      return <Text style={styles.statusIconInline}>✓</Text>;
+    }
+
+    switch (message.deliveryStatus) {
+      case 'sending':
+        return <Text style={styles.statusIconInline}>⏱️</Text>;
+      case 'sent':
+        return <Text style={styles.statusIconInline}>✓</Text>;
+      case 'delivered':
+        return <Text style={styles.statusIconInline}>✓✓</Text>;
+      case 'read':
+        return <Text style={[styles.statusIconInline, styles.readStatus]}>✓✓</Text>;
+      case 'failed':
+        return (
+          <Text
+            style={[styles.statusIconInline, styles.failedStatus]}
+            onPress={() => onRetry?.(message.id)}
+          >
+            ⚠️
+          </Text>
+        );
+      default:
+        return null;
+    }
+  };
+
   // initials handled by Avatar fallback
 
   const messageContent = (
@@ -44,12 +93,6 @@ export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetr
         isOwn ? styles.ownMessage : styles.otherMessage,
       ]}
     >
-      {!isOwn && message.sender && (
-        <Text style={styles.senderName}>
-          {message.sender.displayName}
-        </Text>
-      )}
-
       {/* Image attachments */}
       {message.attachments && message.attachments.length > 0 && (
         <View style={styles.attachmentsContainer}>
@@ -70,18 +113,11 @@ export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetr
         </View>
       )}
 
-      {/* Message text */}
+      {/* Message text with inline status for own messages */}
       <Text style={[styles.messageText, isOwn && styles.ownMessageText]}>
         {message.text}
+        {renderInlineStatusSpan()}
       </Text>
-
-      {/* Timestamp and status */}
-      <View style={styles.footer}>
-        <Text style={[styles.timestamp, isOwn && styles.ownTimestamp]}>
-          {format(message.createdAt, 'HH:mm')}
-        </Text>
-        {isOwn && renderStatusIcon()}
-      </View>
 
       {/* Retry hint for failed messages */}
       {message.deliveryStatus === 'failed' && (
@@ -92,12 +128,19 @@ export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetr
 
   // For own messages or when no avatar should be shown
   if (isOwn) {
-    return messageContent;
+    return (
+      <View style={styles.fullWidthContainer}>
+        {messageContent}
+        {showTimestampBelow && !!timestampText && (
+          <Text style={[styles.metaBelow, styles.metaOwn]}>{timestampText}</Text>
+        )}
+      </View>
+    );
   }
 
   // For other users' messages with avatar layout
   return (
-    <View style={styles.messageRow}>
+    <View style={[styles.messageRow, showAvatar ? styles.newOtherSenderTopGap : undefined]}>
       {/* Avatar or spacer */}
       <View style={styles.avatarContainer}>
         {showAvatar ? (
@@ -106,7 +149,16 @@ export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetr
           <View style={styles.avatarSpacer} />
         )}
       </View>
-      {messageContent}
+      <View style={styles.messageColumn}>
+        {/* Sender name above bubble (group chats) */}
+        {showSenderAbove && message.sender?.displayName ? (
+          <Text style={styles.metaAbove}>{message.sender.displayName}</Text>
+        ) : null}
+        {messageContent}
+        {showTimestampBelow && !!timestampText && (
+          <Text style={[styles.metaBelow, styles.metaOther]}>{timestampText}</Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -115,12 +167,14 @@ const styles = StyleSheet.create({
   messageRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginBottom: 8,
+    marginBottom: 6,
+    width: '100%',
   },
   avatarContainer: {
     width: 40,
     height: 40,
     marginRight: 8,
+    alignSelf: 'flex-start',
   },
   avatar: {
     width: 40,
@@ -145,16 +199,20 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
   },
+  fullWidthContainer: {
+    width: '100%',
+  },
   messageBubble: {
     maxWidth: '75%',
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 16,
     marginBottom: 0,
   },
   ownMessage: {
     alignSelf: 'flex-end',
     backgroundColor: '#007AFF',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   otherMessage: {
     alignSelf: 'flex-start',
@@ -162,23 +220,23 @@ const styles = StyleSheet.create({
   },
   senderName: {
     fontSize: 12,
-    color: '#666',
+    color: '#000',
     marginBottom: 4,
     fontWeight: '600',
   },
   attachmentsContainer: {
-    marginBottom: 8,
+    marginBottom: 6,
   },
   attachmentImage: {
     width: 200,
     height: 150,
     borderRadius: 8,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   messageText: {
     fontSize: 16,
     color: '#000',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   ownMessageText: {
     color: '#fff',
@@ -202,6 +260,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     opacity: 0.7,
   },
+  statusIconInline: {
+    fontSize: 11,
+    color: '#bbb',
+    opacity: 0.9,
+    marginLeft: 6,
+    position: 'relative',
+    top: 5, // slight downward shift visually without affecting line height
+  },
   readStatus: {
     color: '#4CAF50',
     opacity: 1,
@@ -215,6 +281,30 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     marginTop: 4,
     fontStyle: 'italic',
+  },
+  messageColumn: {
+    flex: 1,
+  },
+  newOtherSenderTopGap: {
+    marginTop: 8,
+  },
+  // Metadata outside the bubble
+  metaAbove: {
+    fontSize: 12,
+    color: '#000',
+    marginBottom: 2,
+    fontWeight: '600',
+  },
+  metaBelow: {
+    fontSize: 11,
+    color: '#fff',
+    marginTop: 2,
+  },
+  metaOwn: {
+    alignSelf: 'flex-end',
+  },
+  metaOther: {
+    alignSelf: 'flex-start',
   },
 });
 

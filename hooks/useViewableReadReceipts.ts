@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { markMessageAsRead } from '../services/repositories/readReceiptRepository';
+import { updateMessageStatus } from '../services/firestoreService';
 import { Message } from '../types';
 
 /**
@@ -8,23 +8,26 @@ import { Message } from '../types';
  */
 export function useViewableReadReceipts(
   conversationId: string | null,
-  currentUserId: string | undefined
+  currentUserId: string | undefined,
+  conversationType: 'direct' | 'group' | undefined
 ) {
   const markedRef = useRef<Set<string>>(new Set());
 
   const handler = useRef(({ viewableItems }: any) => {
     if (!conversationId || !currentUserId) return;
+    if (conversationType !== 'direct') return;
     viewableItems.forEach((vi: any) => {
       const item: Message | undefined = vi?.item;
       if (!item) return;
       if (item.senderId === currentUserId) return;
       const already = markedRef.current.has(item.id);
-      const isUnread = !item.readBy || !item.readBy[currentUserId];
-      if (!already && isUnread) {
+      const isUnreadDirect = item.deliveryStatus !== 'read';
+      if (!already && isUnreadDirect) {
         markedRef.current.add(item.id);
-        markMessageAsRead(conversationId, item.id).catch(() => {
-          markedRef.current.delete(item.id);
-        });
+        updateMessageStatus(conversationId, item.id, 'read')
+          .catch(() => {
+            markedRef.current.delete(item.id);
+          });
       }
     });
   });

@@ -3,6 +3,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUpdatePresence } from '@/hooks/usePresence';
 import { startPresenceTracking } from '@/services/presenceService';
 import { selectCustomStatus, useAuthStore } from '@/stores/authStore';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -16,6 +18,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const STATUS_PRESETS = [
   '📅 In a meeting',
@@ -105,8 +108,11 @@ export default function PresenceSettingsScreen() {
     );
   }
 
+  const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: tabBarHeight }}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>

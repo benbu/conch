@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -42,6 +43,12 @@ export default function LoginScreen() {
       style={styles.container}
     >
       <View style={styles.content}>
+        <Image
+          source={require('@/assets/images/logo3.png')}
+          style={styles.logo}
+          resizeMode="contain"
+          accessibilityLabel="Conch logo"
+        />
         <Text style={styles.title}>Welcome to Conch</Text>
         <Text style={styles.subtitle}>Sign in to continue</Text>
 
@@ -97,12 +104,18 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
+  },
+  logo: {
+    width: 96,
+    height: 96,
+    alignSelf: 'center',
+    marginBottom: 16,
   },
   title: {
     fontSize: 32,

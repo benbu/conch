@@ -6,6 +6,8 @@ import { useConversations } from '@/hooks/useConversations';
 import { globalSearch, SearchResult } from '@/services/searchService';
 import { useChatStore } from '@/stores/chatStore';
 import { Message, User } from '@/types';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
@@ -19,6 +21,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface SearchSection {
   title: string;
@@ -26,6 +29,9 @@ interface SearchSection {
 }
 
 export default function ExploreScreen() {
+  const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [deepSearchResults, setDeepSearchResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -309,7 +315,7 @@ export default function ExploreScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 12, paddingBottom: tabBarHeight }]}>
       <View style={styles.searchContainer}>
         {isMultiSelectMode && (
           <View style={styles.selectionHeader}>
@@ -415,13 +421,13 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
   },
   searchContainer: {
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.85)',
   },
   searchInput: {
     height: 44,
@@ -458,7 +464,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.9)',
   },
   avatarContainer: {
     position: 'relative',
@@ -538,7 +544,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.9)',
   },
   deepSearchButton: {
     backgroundColor: '#007AFF',
