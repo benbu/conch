@@ -1,5 +1,7 @@
+import Avatar from '@/components/Avatar';
 import OverlappingAvatars from '@/components/OverlappingAvatars';
 import PresenceIndicator from '@/components/PresenceIndicator';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
 import { searchUsers as searchUsersFirestore } from '@/services/firestoreService';
@@ -146,11 +148,7 @@ export default function ChatsScreen() {
           </View>
         ) : (
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {displayTitle.charAt(0).toUpperCase()}
-              </Text>
-            </View>
+            <Avatar user={otherUser || undefined} size={50} />
             {otherUser && (
               <View style={styles.presenceDot}>
                 <PresenceIndicator userId={otherUser.id} user={otherUser} size="small" />
@@ -227,12 +225,7 @@ export default function ChatsScreen() {
         accessibilityLabel="Start a new chat"
         accessibilityRole="button"
       >
-        <View style={styles.fabIconBase}>
-          <Text style={styles.fabIconBaseText}>💬</Text>
-        </View>
-        <View style={styles.fabIconPlus}>
-          <Text style={styles.fabIconPlusText}>＋</Text>
-        </View>
+        <IconSymbol name="plus.message" color="#fff" size={28} />
       </TouchableOpacity>
 
       {/* New Chat Overlay */}
@@ -285,9 +278,7 @@ export default function ChatsScreen() {
                     }}
                   >
                     <View style={styles.avatarContainer}> 
-                      <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>{item.displayName?.charAt(0).toUpperCase()}</Text>
-                      </View>
+                      <Avatar user={item} size={50} />
                       <View style={styles.presenceDot}>
                         <PresenceIndicator userId={item.id} user={item} size="small" />
                       </View>
@@ -332,37 +323,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  fabIconBase: {
-    position: 'absolute',
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fabIconBaseText: {
-    fontSize: 24,
-    color: '#fff',
-  },
-  fabIconPlus: {
-    position: 'absolute',
-    right: -2,
-    top: -2,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  fabIconPlusText: {
-    color: '#007AFF',
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 22,
   },
   // New Chat Modal styles
   modalBackdrop: {

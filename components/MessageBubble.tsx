@@ -3,17 +3,17 @@ import { format } from 'date-fns';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Message } from '../types';
+import Avatar from './Avatar';
 
 interface MessageBubbleProps {
   message: Message;
   isOwn: boolean;
   showAvatar?: boolean;
-  avatarUrl?: string | null;
   onImagePress?: (imageUrl: string) => void;
   onRetry?: (messageId: string) => void;
 }
 
-export function MessageBubble({ message, isOwn, showAvatar, avatarUrl, onImagePress, onRetry }: MessageBubbleProps) {
+export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetry }: MessageBubbleProps) {
   const renderStatusIcon = () => {
     switch (message.deliveryStatus) {
       case 'sending':
@@ -35,15 +35,7 @@ export function MessageBubble({ message, isOwn, showAvatar, avatarUrl, onImagePr
     }
   };
 
-  // Get initials for placeholder avatar
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
+  // initials handled by Avatar fallback
 
   const messageContent = (
     <View
@@ -109,19 +101,7 @@ export function MessageBubble({ message, isOwn, showAvatar, avatarUrl, onImagePr
       {/* Avatar or spacer */}
       <View style={styles.avatarContainer}>
         {showAvatar ? (
-          avatarUrl ? (
-            <Image
-              source={{ uri: avatarUrl }}
-              style={styles.avatar}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarInitials}>
-                {message.sender?.displayName ? getInitials(message.sender.displayName) : '?'}
-              </Text>
-            </View>
-          )
+          <Avatar user={message.sender} size={40} />
         ) : (
           <View style={styles.avatarSpacer} />
         )}

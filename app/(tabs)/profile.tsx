@@ -1,3 +1,4 @@
+import Avatar from '@/components/Avatar';
 import { IN_APP_NOTIFICATIONS_ENABLED } from '@/constants/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -5,12 +6,12 @@ import { useChatStore } from '@/stores/chatStore';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 export default function ProfileScreen() {
@@ -48,11 +49,7 @@ export default function ProfileScreen() {
   return (
     <ScrollView testID="profile-screen" style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.avatarLarge}>
-          <Text style={styles.avatarLargeText}>
-            {user.displayName.charAt(0).toUpperCase()}
-          </Text>
-        </View>
+        <Avatar user={user} size={100} />
         <Text style={styles.displayName}>{user.displayName}</Text>
         <Text style={styles.email}>{user.email}</Text>
       </View>

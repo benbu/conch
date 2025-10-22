@@ -307,7 +307,9 @@ export default function ChatScreen() {
     // Determine if we should show avatar for this message
     const previousMessage = index > 0 ? messages[index - 1] : null;
     const showAvatar = !isOwn && (!previousMessage || previousMessage.senderId !== item.senderId);
-    const avatarUrl = !isOwn && item.sender?.photoURL ? item.sender.photoURL : null;
+    // Ensure the Avatar receives a full user object; fall back to participants by senderId
+    const senderUser = item.sender ?? (participants as any[]).find((p: any) => p.id === item.senderId);
+    const enrichedMessage = senderUser ? { ...item, sender: senderUser } : item;
     
     return (
       <View style={isHighlighted ? styles.highlightedMessageContainer : undefined}>
@@ -318,10 +320,9 @@ export default function ChatScreen() {
           />
         )}
         <MessageBubble 
-          message={item} 
+          message={enrichedMessage} 
           isOwn={isOwn} 
           showAvatar={showAvatar}
-          avatarUrl={avatarUrl}
           onRetry={handleRetry} 
         />
       </View>
