@@ -19,6 +19,7 @@ import { useMessages } from '@/hooks/useMessages';
 import { useUserPresence } from '@/hooks/usePresence';
 import { pickImageFromGallery, uploadConversationImage } from '@/services/imageService';
 import { setCurrentConversation } from '@/services/messageNotificationService';
+import { markMessageAsRead } from '@/services/readReceiptService';
 import { useChatStore } from '@/stores/chatStore';
 import { Message, User } from '@/types';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -52,6 +53,8 @@ export default function ChatScreen() {
   const [showMemberManagement, setShowMemberManagement] = useState(false);
   const [showGroupNameModal, setShowGroupNameModal] = useState(false);
   const [showAddMemberSearch, setShowAddMemberSearch] = useState(false);
+  const [didScrollToUnread, setDidScrollToUnread] = useState(false);
+  const markedAsReadRef = React.useRef(new Set<string>());
   
   const flatListRef = React.useRef<FlatList>(null);
   const router = useRouter();
@@ -131,6 +134,47 @@ export default function ChatScreen() {
       }
     }
   }, [targetMessageId, messages.length, loading]);
+
+  // On open, scroll so the oldest unread message is at the top; if none, go to bottom
+  useEffect(() => {
+    if (!conversationId || targetMessageId || loading || didScrollToUnread) return;
+    if (!user || messages.length === 0) return;
+
+    let cancelled = false;
+    const tryScroll = async () => {
+      // Attempt up to 10 pagination steps to find the oldest unread
+      for (let i = 0; i < 10; i++) {
+        const currentMessages = useChatStore.getState().getMessagesByConversationId(conversationId);
+        const idx = currentMessages.findIndex(
+          (m) => m.senderId !== user.id && (!m.readBy || !m.readBy[user.id])
+        );
+        if (idx !== -1) {
+          // Align the oldest unread to the top of the view
+          setTimeout(() => {
+            if (cancelled) return;
+            flatListRef.current?.scrollToIndex({ index: idx, animated: false, viewPosition: 0 });
+            setDidScrollToUnread(true);
+          }, 250);
+          return;
+        }
+        if (!hasMore) break;
+        const loaded = await loadMoreMessages();
+        if (loaded === 0) break;
+      }
+
+      // No unread found; scroll to bottom (latest)
+      setTimeout(() => {
+        if (cancelled) return;
+        flatListRef.current?.scrollToEnd?.({ animated: false });
+        setDidScrollToUnread(true);
+      }, 250);
+    };
+
+    tryScroll();
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, targetMessageId, loading, messages, hasMore, user?.id, didScrollToUnread]);
 
   const handleSend = async () => {
     if (!messageText.trim()) return;
@@ -247,6 +291,26 @@ export default function ChatScreen() {
       handleLoadMore();
     }
   };
+
+  // Mark messages as read when sufficiently visible
+  const onViewableItemsChanged = React.useRef(({ viewableItems }: any) => {
+    if (!conversationId || !user) return;
+    viewableItems.forEach((vi: any) => {
+      const item: Message | undefined = vi?.item;
+      if (!item) return;
+      if (item.senderId === user.id) return;
+      const already = markedAsReadRef.current.has(item.id);
+      const isUnread = !item.readBy || !item.readBy[user.id];
+      if (!already && isUnread) {
+        markedAsReadRef.current.add(item.id);
+        markMessageAsRead(conversationId, item.id).catch(() => {
+          // ignore errors; will retry on next visibility
+          markedAsReadRef.current.delete(item.id);
+        });
+      }
+    });
+  });
+  const viewabilityConfig = { itemVisiblePercentThreshold: 60 } as const;
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isOwn = item.senderId === user?.id;
@@ -402,6 +466,8 @@ export default function ChatScreen() {
           inverted={false}
           onScroll={onScroll}
           scrollEventThrottle={16}
+          onViewableItemsChanged={onViewableItemsChanged.current}
+          viewabilityConfig={viewabilityConfig}
           onScrollToIndexFailed={(info) => {
             // Handle scroll failure by trying again
             setTimeout(() => {

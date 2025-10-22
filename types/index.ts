@@ -54,6 +54,7 @@ export interface Message {
   text: string;
   attachments?: Attachment[];
   deliveryStatus: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+  readBy?: Record<string, Date>;
   createdAt: Date;
   updatedAt?: Date;
   localId?: string; // For optimistic updates
