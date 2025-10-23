@@ -133,7 +133,19 @@ export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetr
       <View style={styles.fullWidthContainer}>
         {messageContent}
         {showTimestampBelow && !!timestampText && (
-          <Text style={[styles.metaBelow, styles.metaOwn]}>{timestampText}</Text>
+          <Text style={[styles.metaBelow, styles.metaCenter]}>{timestampText}</Text>
+        )}
+      </View>
+    );
+  }
+
+  // For other users' messages in direct (single) chats: no avatar column, no left gap
+  if (conversationType !== 'group' && !showAvatar) {
+    return (
+      <View style={styles.fullWidthContainer}>
+        {messageContent}
+        {showTimestampBelow && !!timestampText && (
+          <Text style={[styles.metaBelow, styles.metaCenter]}>{timestampText}</Text>
         )}
       </View>
     );
@@ -157,7 +169,7 @@ export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetr
         ) : null}
         {messageContent}
         {showTimestampBelow && !!timestampText && (
-          <Text style={[styles.metaBelow, styles.metaOther]}>{timestampText}</Text>
+          <Text style={[styles.metaBelow, styles.metaCenter]}>{timestampText}</Text>
         )}
       </View>
     </View>
@@ -298,14 +310,11 @@ const styles = StyleSheet.create({
   },
   metaBelow: {
     fontSize: 11,
-    color: '#fff',
+    color: '#000',
     marginTop: 2,
   },
-  metaOwn: {
-    alignSelf: 'flex-end',
-  },
-  metaOther: {
-    alignSelf: 'flex-start',
+  metaCenter: {
+    alignSelf: 'center',
   },
 });
 

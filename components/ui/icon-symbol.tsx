@@ -23,6 +23,7 @@ const MAPPING = {
   'plus.message': 'add-comment',
   'magnifyingglass': 'search',
   'person.fill': 'person',
+  'sparkles': 'auto-awesome',
 } as IconMapping;
 
 /**

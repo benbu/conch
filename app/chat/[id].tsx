@@ -363,7 +363,9 @@ export default function ChatScreen() {
     const showTimestampBelow = prevCreatedAt && createdAt
       ? (createdAt.getTime() - prevCreatedAt.getTime()) >= 5 * 60 * 1000
       : true;
-    const timestampText = createdAt && showTimestampBelow ? format(createdAt, 'HH:mm') : undefined;
+    const timestampText = createdAt && showTimestampBelow
+      ? `${format(createdAt, "EEEE, MMM d 'at' h:mm")} ${format(createdAt, 'a').toLowerCase()}`
+      : undefined;
     
     return (
       <View style={isHighlighted ? styles.highlightedMessageContainer : undefined}>
@@ -432,16 +434,9 @@ export default function ChatScreen() {
     );
   }
 
-  // Custom header: back + avatar(s) + title, left-aligned
+  // Custom header: avatar(s) + title, left-aligned
   const HeaderTitle = () => (
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}>
-      <TouchableOpacity
-        onPress={() => router.back()}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        style={{ paddingHorizontal: 8, paddingVertical: 4, marginRight: 4 }}
-      >
-        <IconSymbol name={'chevron.left'} size={22} color={'#fff'} />
-      </TouchableOpacity>
       <ChatHeaderAvatars
         type={conversation?.type}
         participants={participants}
@@ -463,7 +458,6 @@ export default function ChatScreen() {
           headerTransparent: true,
           contentStyle: { backgroundColor: 'transparent' },
           headerTitleAlign: 'left',
-          headerLeft: () => null,
           headerBackground: () => (
             <BlurView
               tint={getGlassTint(colorScheme === 'dark')}
@@ -475,9 +469,11 @@ export default function ChatScreen() {
           headerRight: () => (
             <TouchableOpacity
               onPress={() => setShowAIMenu(true)}
-              style={styles.aiButton}
+              style={{ paddingHorizontal: 8, paddingVertical: 6, marginRight: 8 }}
+              accessibilityLabel="AI menu"
+              accessibilityRole="button"
             >
-              <Text style={styles.aiButtonText}>✨ AI</Text>
+              <IconSymbol name="sparkles" color="#000" size={22} />
             </TouchableOpacity>
           ),
         }}
@@ -486,8 +482,8 @@ export default function ChatScreen() {
       <KeyboardAvoidingView
         style={styles.container}
         enabled={Platform.OS === 'ios' ? true : keyboardVisible}
-        behavior={Platform.OS === 'ios' ? (keyboardVisible ? 'position' : undefined) : (keyboardVisible ? 'height' : undefined)}
-        keyboardVerticalOffset={0}
+        behavior={Platform.OS === 'ios' ? 'padding' : (keyboardVisible ? 'height' : undefined)}
+        keyboardVerticalOffset={headerHeight}
       >
         {/* Push content below transparent header */}
         <View style={{ height: headerHeight }} />
@@ -515,6 +511,7 @@ export default function ChatScreen() {
             messageText={messageText}
             setMessageText={setMessageText}
             onSend={handleSend}
+            keyboardVisible={keyboardVisible}
           />
         </View>
       </KeyboardAvoidingView>
