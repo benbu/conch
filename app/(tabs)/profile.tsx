@@ -8,12 +8,12 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -122,6 +122,17 @@ export default function ProfileScreen() {
 
         <TouchableOpacity style={styles.menuItem}>
           <Text style={styles.menuItemText}>Help & Support</Text>
+          <Text style={styles.menuItemChevron}>›</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => router.push('/(tabs)/developer')}
+          testID="open-developer-tools"
+        >
+          <Text style={styles.menuItemText}>🧰 Developer Tools</Text>
           <Text style={styles.menuItemChevron}>›</Text>
         </TouchableOpacity>
       </View>

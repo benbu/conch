@@ -2,7 +2,7 @@ import { GLASS_INTENSITY, getGlassBorder, getGlassTint } from '@/constants/theme
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { emitPresenceActivity } from '@/hooks/usePresenceHeartbeat';
 import { BlurView } from 'expo-blur';
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { ActivityIndicator, Platform, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

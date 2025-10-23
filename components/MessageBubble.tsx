@@ -13,9 +13,10 @@ interface MessageBubbleProps {
   showTimestampBelow?: boolean;
   timestampText?: string;
   conversationType?: 'direct' | 'group';
+  belowContent?: React.ReactNode;
 }
 
-export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetry, showSenderAbove, showTimestampBelow, timestampText, conversationType }: MessageBubbleProps) {
+export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetry, showSenderAbove, showTimestampBelow, timestampText, conversationType, belowContent }: MessageBubbleProps) {
   const renderStatusIcon = () => {
     // In group chats, only show minimal status for own messages
     if (conversationType === 'group') {
@@ -132,6 +133,7 @@ export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetr
     return (
       <View style={styles.fullWidthContainer}>
         {messageContent}
+        {belowContent}
         {showTimestampBelow && !!timestampText && (
           <Text style={[styles.metaBelow, styles.metaCenter]}>{timestampText}</Text>
         )}
@@ -144,6 +146,7 @@ export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetr
     return (
       <View style={styles.fullWidthContainer}>
         {messageContent}
+        {belowContent}
         {showTimestampBelow && !!timestampText && (
           <Text style={[styles.metaBelow, styles.metaCenter]}>{timestampText}</Text>
         )}
@@ -168,6 +171,7 @@ export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetr
           <Text style={styles.metaAbove}>{message.sender.displayName}</Text>
         ) : null}
         {messageContent}
+        {belowContent}
         {showTimestampBelow && !!timestampText && (
           <Text style={[styles.metaBelow, styles.metaCenter]}>{timestampText}</Text>
         )}

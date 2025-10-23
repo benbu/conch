@@ -2,7 +2,7 @@
  * Authentication middleware for Cloud Functions
  */
 
-import { Request, Response } from 'express';
+import { Request } from 'express';
 import * as admin from 'firebase-admin';
 
 export interface AuthenticatedRequest extends Request {
@@ -16,8 +16,8 @@ export interface AuthenticatedRequest extends Request {
  * Verifies Firebase ID token and attaches user info to request
  */
 export async function authenticateRequest(
-  req: Request,
-  res: Response
+  req: any,
+  res: any
 ): Promise<AuthenticatedRequest | null> {
   const authHeader = req.headers.authorization;
 

@@ -45,10 +45,12 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ChatScreen() {
   const colorScheme = useColorScheme();
   const headerHeight = useHeaderHeight();
+  const insets = useSafeAreaInsets();
   const [inputBarHeight, setInputBarHeight] = React.useState(0);
   const params = useLocalSearchParams<{ id?: string | string[]; messageId?: string | string[] }>();
   const conversationId = Array.isArray(params.id) ? params.id?.[0] ?? null : params.id ?? null;
@@ -67,6 +69,7 @@ export default function ChatScreen() {
   const [showAddMemberSearch, setShowAddMemberSearch] = useState(false);
   const [didScrollToUnread, setDidScrollToUnread] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [expandedTranslations, setExpandedTranslations] = useState<Record<string, boolean>>({});
   
   const flatListRef = React.useRef<FlatList>(null);
   const router = useRouter();
@@ -376,17 +379,7 @@ export default function ChatScreen() {
           />
         )}
         <View>
-          <MessageBubble 
-            message={enrichedMessage} 
-            isOwn={isOwn} 
-            showAvatar={showAvatar}
-            showSenderAbove={showSenderAbove}
-            showTimestampBelow={showTimestampBelow}
-            timestampText={timestampText}
-            conversationType={conversation?.type}
-            onRetry={handleRetry} 
-          />
-          {/* Inline translation renderer */}
+          {/* Inline translation renderer (rendered before timestamp via belowContent) */}
           {(() => {
             const t = translations.get(item.id);
             if (!t) return null;
@@ -404,14 +397,60 @@ export default function ChatScreen() {
                 </Text>
               );
             }
-            if (t.status === 'completed' && !t.noTranslationNeeded && t.translation) {
-              return (
-                <Text style={{ fontSize: 14, color: '#333', marginTop: 4, marginLeft: isOwn ? 0 : 48 }}>
-                  {t.translation}
-                </Text>
-              );
-            }
-            return null;
+            const detail = (() => {
+              if (t.status === 'completed' && !t.noTranslationNeeded && t.translation) {
+                const hasDetails = !!t.culturalContextHints?.length || !!t.slangExplanations?.length;
+                const isExpanded = !!expandedTranslations[item.id];
+                const toggleExpand = () => setExpandedTranslations((prev) => ({ ...prev, [item.id]: !prev[item.id] }));
+                return (
+                  <View style={[styles.translationBubble, { marginLeft: isOwn ? 0 : 48 }]}>
+                    <Text style={styles.translationText}>{t.translation}</Text>
+                    {hasDetails && (
+                      <>
+                        <TouchableOpacity onPress={toggleExpand} style={styles.translationToggleRow}>
+                          <Text style={styles.translationToggleText}>More info</Text>
+                          <Text style={styles.translationChevron}>{isExpanded ? '▾' : '▸'}</Text>
+                        </TouchableOpacity>
+                        {isExpanded && (
+                          <>
+                            {!!t.culturalContextHints?.length && (
+                              <View style={styles.translationSection}>
+                                <Text style={styles.translationMetaTitle}>Context</Text>
+                                {t.culturalContextHints.map((hint: string, idx: number) => (
+                                  <Text key={`hint-${idx}`} style={styles.translationMetaItem}>• {hint}</Text>
+                                ))}
+                              </View>
+                            )}
+                            {!!t.slangExplanations?.length && (
+                              <View style={styles.translationSection}>
+                                <Text style={styles.translationMetaTitle}>Slang/Idioms</Text>
+                                {t.slangExplanations.map((s: any, idx: number) => (
+                                  <Text key={`slang-${idx}`} style={styles.translationMetaItem}>• {s.phrase}: {s.explanation}</Text>
+                                ))}
+                              </View>
+                            )}
+                          </>
+                        )}
+                      </>
+                    )}
+                  </View>
+                );
+              }
+              return null;
+            })();
+            return (
+              <MessageBubble 
+                message={enrichedMessage} 
+                isOwn={isOwn} 
+                showAvatar={showAvatar}
+                showSenderAbove={showSenderAbove}
+                showTimestampBelow={showTimestampBelow}
+                timestampText={timestampText}
+                conversationType={conversation?.type}
+                onRetry={handleRetry}
+                belowContent={detail}
+              />
+            );
           })()}
         </View>
       </View>
@@ -483,7 +522,7 @@ export default function ChatScreen() {
         style={styles.container}
         enabled={Platform.OS === 'ios' ? true : keyboardVisible}
         behavior={Platform.OS === 'ios' ? 'padding' : (keyboardVisible ? 'height' : undefined)}
-        keyboardVerticalOffset={headerHeight}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? Math.max(0, headerHeight - (insets.bottom || 0)) : 0}
       >
         {/* Push content below transparent header */}
         <View style={{ height: headerHeight }} />
@@ -733,6 +772,52 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#FFC107',
     paddingLeft: 8,
+  },
+  translationBubble: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    maxWidth: '75%',
+    backgroundColor: '#EEF4FF',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  translationText: {
+    fontSize: 15,
+    color: '#1a1a1a',
+  },
+  translationSection: {
+    marginTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#DEEAFF',
+    paddingTop: 6,
+  },
+  translationToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  translationToggleText: {
+    fontSize: 12,
+    color: '#4466AA',
+    fontWeight: '600',
+  },
+  translationChevron: {
+    fontSize: 14,
+    color: '#4466AA',
+    marginLeft: 8,
+  },
+  translationMetaTitle: {
+    fontSize: 12,
+    color: '#4466AA',
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  translationMetaItem: {
+    fontSize: 12,
+    color: '#4A4A4A',
+    lineHeight: 16,
   },
 });
 
