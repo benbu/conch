@@ -3,11 +3,11 @@
  * Identifies tasks and action items from conversations
  */
 
-import * as admin from 'firebase-admin';
 import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
+import * as admin from 'firebase-admin';
 import { z } from 'zod';
-import { Message, AIActions, ActionItem } from '../types';
+import { AIActions, ActionItem, Message } from '../types';
 
 const ActionItemSchema = z.object({
   title: z.string().describe('The action item or task description'),
@@ -48,9 +48,9 @@ export async function extractActions(
     .join('\n');
 
   // Extract action items using structured output
-  const { object: actionsData } = await generateObject({
-    model: openai('gpt-4-turbo'),
-    schema: ActionsResponseSchema,
+  const { object: actionsData } = (await generateObject({
+    model: openai('gpt-4o-mini') as any,
+    schema: ActionsResponseSchema as any,
     prompt: `You are a helpful assistant that extracts action items from team conversations.
 
 Analyze the following conversation and identify all action items, tasks, or commitments made by team members.
@@ -67,10 +67,10 @@ Conversation:
 ${messagesText}
 
 Extract all action items:`,
-  });
+  } as any)) as any;
 
   // Parse action items and convert dates
-  const actionItems: ActionItem[] = actionsData.actions.map((action) => ({
+  const actionItems: ActionItem[] = (actionsData.actions as any[]).map((action: any) => ({
     title: action.title,
     ownerId: action.ownerId,
     dueAt: action.dueAt ? new Date(action.dueAt) : undefined,
@@ -123,12 +123,13 @@ async function fetchMessages(
 
   const snapshot = await query.get();
 
-  return snapshot.docs
-    .map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() ?? new Date(),
-    })) as Message[]
-    .reverse();
+  return (
+    snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() ?? new Date(),
+      })) as Message[]
+  ).reverse();
 }
 

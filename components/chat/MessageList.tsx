@@ -1,4 +1,3 @@
-import React from 'react';
 import { ActivityIndicator, FlatList, View } from 'react-native';
 import { Message } from '../../types';
 
@@ -12,6 +11,7 @@ export function MessageList({
   loadingMore,
   headerSpacerHeight = 0,
   footerSpacerHeight = 0,
+  extraHeaderComponent,
 }: any) {
   return (
     <FlatList
@@ -34,6 +34,7 @@ export function MessageList({
       ListHeaderComponent={
         <>
           {headerSpacerHeight > 0 ? <View style={{ height: headerSpacerHeight }} /> : null}
+          {extraHeaderComponent}
           {loadingMore ? <ActivityIndicator style={{ paddingVertical: 16 }} /> : null}
         </>
       }

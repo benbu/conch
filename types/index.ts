@@ -6,6 +6,8 @@ export interface User {
   displayName: string;
   photoURL?: string | null;
   timeZone: string;
+  defaultLanguage?: string; // ISO 639-1 like 'en', 'es'
+  autoTranslate?: boolean;
   workHours?: {
     start: string; // HH:mm format
     end: string;   // HH:mm format

@@ -3,10 +3,10 @@
  * Generates concise summaries of conversation threads
  */
 
-import * as admin from 'firebase-admin';
 import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
-import { Message, AISummary } from '../types';
+import * as admin from 'firebase-admin';
+import { AISummary, Message } from '../types';
 
 export async function summarizeThread(
   conversationId: string,
@@ -37,7 +37,7 @@ export async function summarizeThread(
 
   // Generate summary using Vercel AI SDK
   const { text: summary } = await generateText({
-    model: openai('gpt-4-turbo'),
+    model: openai('gpt-4o-mini') as any,
     prompt: `You are a helpful assistant that summarizes team conversations. 
     
 Given the following conversation thread, provide a concise summary that:
@@ -102,12 +102,13 @@ async function fetchMessages(
 
   const snapshot = await query.get();
 
-  return snapshot.docs
-    .map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() ?? new Date(),
-    })) as Message[]
-    .reverse(); // Return in chronological order
+  return (
+    snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() ?? new Date(),
+      })) as Message[]
+  ).reverse(); // Return in chronological order
 }
 
