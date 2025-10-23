@@ -39,15 +39,6 @@ export const onMessageCreated = onDocumentCreated(
         return;
       }
 
-      // Get sender info
-      const senderDoc = await admin
-        .firestore()
-        .collection('users')
-        .doc(message.senderId)
-        .get();
-
-      const senderName = senderDoc.data()?.displayName || 'Someone';
-
       // Find recipients (all participants except sender)
       const recipients = conversation.participantIds.filter(
         (id: string) => id !== message.senderId
@@ -59,8 +50,7 @@ export const onMessageCreated = onDocumentCreated(
       }
 
       // Prepare notification payload
-      const title = conversation.title || senderName;
-      const body = message.text || '📷 Image';
+      // Notification payload intentionally unused while FCM config is fixed
 
     } catch (error) {
       console.error('Error sending notification:', error);

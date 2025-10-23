@@ -4,6 +4,7 @@ import {
     arrayRemove,
     arrayUnion,
     collection,
+    collectionGroup,
     doc,
     getDoc,
     getDocs,
@@ -263,6 +264,74 @@ export function subscribeToMessageTranslation(
       });
     }
   });
+}
+
+/**
+ * Fetch recent translation error docs for conversations the user participates in
+ */
+export async function getTranslationErrorsForUser(
+  userId: string,
+  limitCount: number = 50
+): Promise<{
+  conversationId: string;
+  messageId: string;
+  lang: string;
+  data: TranslationDoc & { updatedAt?: Date; createdAt?: Date };
+}[]> {
+  // Fetch the user's conversation ids first
+  const convQ = query(
+    collection(db, 'conversations'),
+    where('participantIds', 'array-contains', userId)
+  );
+  const convSnap = await getDocs(convQ);
+  const convIds = new Set(convSnap.docs.map((d) => d.id));
+
+  // Query translations collection group for errors
+  const tQ = query(
+    collectionGroup(db, 'translations'),
+    where('status', '==', 'error'),
+    orderBy('updatedAt', 'desc'),
+    limit(limitCount)
+  );
+  const tSnap = await getDocs(tQ);
+
+  const out: {
+    conversationId: string;
+    messageId: string;
+    lang: string;
+    data: TranslationDoc & { updatedAt?: Date; createdAt?: Date };
+  }[] = [];
+
+  for (const docSnap of tSnap.docs) {
+    const pathParts = docSnap.ref.path.split('/');
+    // Expect: conversations/{convId}/messages/{msgId}/translations/{lang}
+    if (pathParts.length >= 6 && pathParts[0] === 'conversations') {
+      const conversationId = pathParts[1];
+      if (!convIds.has(conversationId)) continue; // restrict to user's conversations
+      const messageId = pathParts[3];
+      const lang = pathParts[5];
+      const data = docSnap.data() as any;
+      out.push({
+        conversationId,
+        messageId,
+        lang,
+        data: {
+          status: data.status,
+          translation: data.translation,
+          noTranslationNeeded: data.noTranslationNeeded,
+          detectedSourceLang: data.detectedSourceLang,
+          confidence: data.confidence,
+          culturalContextHints: data.culturalContextHints,
+          slangExplanations: data.slangExplanations,
+          error: data.error,
+          updatedAt: data.updatedAt?.toDate?.() || undefined,
+          createdAt: data.createdAt?.toDate?.() || undefined,
+        },
+      });
+    }
+  }
+
+  return out;
 }
 
 

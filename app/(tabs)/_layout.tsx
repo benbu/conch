@@ -1,6 +1,5 @@
 import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
-import React from 'react';
 import { StyleSheet } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
@@ -78,6 +77,12 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="presence-settings"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="developer"
         options={{
           href: null,
         }}
