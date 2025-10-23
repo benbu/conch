@@ -521,8 +521,8 @@ export default function ChatScreen() {
       <KeyboardAvoidingView
         style={styles.container}
         enabled={Platform.OS === 'ios' ? true : keyboardVisible}
-        behavior={Platform.OS === 'ios' ? 'padding' : (keyboardVisible ? 'height' : undefined)}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? Math.max(0, headerHeight - (insets.bottom || 0)) : 0}
+        behavior={Platform.OS === 'ios' ? (keyboardVisible ? 'padding' : undefined) : (keyboardVisible ? 'height' : undefined)}
+        /* keyboardVerticalOffset={Platform.OS === 'ios' ? (keyboardVisible ? 0 : 0) : 0} */
       >
         {/* Push content below transparent header */}
         <View style={{ height: headerHeight }} />

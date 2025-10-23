@@ -3,7 +3,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { emitPresenceActivity } from '@/hooks/usePresenceHeartbeat';
 import { BlurView } from 'expo-blur';
 import { useCallback } from 'react';
-import { ActivityIndicator, Platform, Text, TextInput, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function InputBar({
@@ -17,9 +17,7 @@ export function InputBar({
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
-  const bottomPadding = Platform.OS === 'ios'
-    ? (keyboardVisible ? 8 : Math.max(8, (insets.bottom || 0) + 8))
-    : 8;
+  const bottomPadding = keyboardVisible ? 8 : Math.max(8, (insets.bottom || 0) + 8);
   const handlePickImage = useCallback(() => {
     emitPresenceActivity();
     onPickImage && onPickImage();
