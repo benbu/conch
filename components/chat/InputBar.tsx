@@ -3,7 +3,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { emitPresenceActivity } from '@/hooks/usePresenceHeartbeat';
 import { BlurView } from 'expo-blur';
 import React, { useCallback } from 'react';
-import { ActivityIndicator, Text, TextInput, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Platform, Text, TextInput, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function InputBar({
   uploading,
@@ -11,9 +12,14 @@ export function InputBar({
   messageText,
   setMessageText,
   onSend,
+  keyboardVisible,
 }: any) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Platform.OS === 'ios'
+    ? (keyboardVisible ? 8 : Math.max(8, (insets.bottom || 0) + 8))
+    : 8;
   const handlePickImage = useCallback(() => {
     emitPresenceActivity();
     onPickImage && onPickImage();
@@ -32,8 +38,9 @@ export function InputBar({
   return (
     <BlurView tint={getGlassTint(isDark)} intensity={GLASS_INTENSITY} style={{
       flexDirection: 'row',
-      padding: 8,
-      paddingBottom: 20,
+      paddingHorizontal: 8,
+      paddingTop: 8,
+      paddingBottom: bottomPadding,
       alignItems: 'center',
       gap: 8,
       borderTopWidth: 1,

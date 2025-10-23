@@ -3,17 +3,20 @@
  * Manage AI features and permissions
  */
 
+import { useAuth } from '@/hooks/useAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { Stack } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     Alert,
+    Modal,
     ScrollView,
     StyleSheet,
     Switch,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
@@ -43,8 +46,58 @@ export default function AISettingsScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
+  const { user, updateProfile } = useAuth();
   const [settings, setSettings] = useState<AISettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(false);
+  const [autoTranslate, setAutoTranslate] = useState<boolean>(!!user?.autoTranslate);
+  const [defaultLanguage, setDefaultLanguage] = useState<string>((user as any)?.defaultLanguage || 'en');
+  const [langModalVisible, setLangModalVisible] = useState(false);
+  const [langQuery, setLangQuery] = useState('');
+  useEffect(() => {
+    setAutoTranslate(!!user?.autoTranslate);
+    setDefaultLanguage((user as any)?.defaultLanguage || 'en');
+  }, [user?.autoTranslate, (user as any)?.defaultLanguage]);
+  const languageOptions = useMemo(
+    () => [
+      { code: 'en', name: 'English' },
+      { code: 'es', name: 'Spanish' },
+      { code: 'fr', name: 'French' },
+      { code: 'de', name: 'German' },
+      { code: 'pt', name: 'Portuguese' },
+      { code: 'it', name: 'Italian' },
+      { code: 'ja', name: 'Japanese' },
+      { code: 'zh', name: 'Chinese' },
+      { code: 'ko', name: 'Korean' },
+      { code: 'ru', name: 'Russian' },
+      { code: 'ar', name: 'Arabic' },
+      { code: 'hi', name: 'Hindi' },
+      { code: 'nl', name: 'Dutch' },
+      { code: 'sv', name: 'Swedish' },
+      { code: 'no', name: 'Norwegian' },
+      { code: 'da', name: 'Danish' },
+      { code: 'fi', name: 'Finnish' },
+      { code: 'pl', name: 'Polish' },
+      { code: 'cs', name: 'Czech' },
+      { code: 'tr', name: 'Turkish' },
+      { code: 'el', name: 'Greek' },
+      { code: 'he', name: 'Hebrew' },
+      { code: 'th', name: 'Thai' },
+      { code: 'vi', name: 'Vietnamese' },
+      { code: 'id', name: 'Indonesian' },
+      { code: 'ms', name: 'Malay' },
+      { code: 'ro', name: 'Romanian' },
+      { code: 'hu', name: 'Hungarian' },
+      { code: 'uk', name: 'Ukrainian' },
+    ],
+    []
+  );
+  const filteredLanguages = useMemo(() => {
+    const q = langQuery.trim().toLowerCase();
+    if (!q) return languageOptions;
+    return languageOptions.filter(
+      (l) => l.name.toLowerCase().includes(q) || l.code.toLowerCase().includes(q)
+    );
+  }, [langQuery, languageOptions]);
 
   React.useEffect(() => {
     loadSettings();
@@ -106,6 +159,46 @@ export default function AISettingsScreen() {
     );
   };
 
+  const onToggleAutoTranslate = async (value: boolean) => {
+    setAutoTranslate(value);
+    try {
+      if (value) {
+        const hasExistingLang = !!(user as any)?.defaultLanguage;
+        // Derive device locale language (e.g., en-US -> en)
+        const deviceLocale = (Intl?.DateTimeFormat?.().resolvedOptions?.().locale as string) || 'en';
+        const deviceLang = (deviceLocale.split('-')[0] || 'en').toLowerCase();
+        const supportedCodes = languageOptions.map(l => l.code);
+        const chosenLang = hasExistingLang
+          ? ((user as any)?.defaultLanguage as string)
+          : (supportedCodes.includes(deviceLang) ? deviceLang : 'en');
+
+        if (!hasExistingLang) {
+          setDefaultLanguage(chosenLang);
+          await updateProfile({ autoTranslate: true, defaultLanguage: chosenLang });
+        } else {
+          await updateProfile({ autoTranslate: true });
+        }
+      } else {
+        await updateProfile({ autoTranslate: false });
+      }
+    } catch (e) {
+      setAutoTranslate(!value);
+      Alert.alert('Error', 'Failed to update auto-translate');
+    }
+  };
+
+  const onSelectLanguage = async (lang: string) => {
+    const prev = defaultLanguage;
+    setDefaultLanguage(lang);
+    try {
+      await updateProfile({ defaultLanguage: lang });
+      setLangModalVisible(false);
+    } catch (e) {
+      setDefaultLanguage(prev);
+      Alert.alert('Error', 'Failed to update language');
+    }
+  };
+
   return (
     <>
       <Stack.Screen
@@ -115,6 +208,75 @@ export default function AISettingsScreen() {
       />
       
       <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: tabBarHeight }}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Translation</Text>
+          <Text style={styles.sectionDescription}>
+            Automatically translate incoming messages into your preferred language
+          </Text>
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingTitle}>Auto-translate</Text>
+              <Text style={styles.settingDescription}>Show translations inline under messages</Text>
+            </View>
+            <Switch
+              value={autoTranslate}
+              onValueChange={onToggleAutoTranslate}
+            />
+          </View>
+
+          <View style={[styles.settingRow, { alignItems: 'center' } ]}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingTitle}>Default language</Text>
+              <Text style={styles.settingDescription}>Select the language to translate into</Text>
+            </View>
+            <TouchableOpacity
+              disabled={!autoTranslate}
+              onPress={() => setLangModalVisible(true)}
+              style={[styles.dropdownButton, !autoTranslate ? styles.langPillDisabled : undefined]}
+            >
+              <Text style={styles.dropdownButtonText}>
+                {languageOptions.find((l) => l.code === defaultLanguage)?.name || defaultLanguage.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <Modal
+            visible={langModalVisible}
+            animationType="slide"
+            transparent
+            onRequestClose={() => setLangModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalTitle}>Choose language</Text>
+                <TextInput
+                  placeholder="Search language or code"
+                  placeholderTextColor="#999"
+                  value={langQuery}
+                  onChangeText={setLangQuery}
+                  style={styles.searchInput}
+                />
+                <ScrollView style={{ maxHeight: 360 }}>
+                  {filteredLanguages.map((l) => (
+                    <TouchableOpacity
+                      key={l.code}
+                      style={styles.optionRow}
+                      onPress={() => onSelectLanguage(l.code)}
+                    >
+                      <Text style={styles.optionText}>{l.name}</Text>
+                      <Text style={styles.optionCode}>{l.code.toUpperCase()}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <View style={{ height: 12 }} />
+                <TouchableOpacity onPress={() => setLangModalVisible(false)} style={styles.modalCloseButton}>
+                  <Text style={styles.modalCloseText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        </View>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>AI Features</Text>
           <Text style={styles.sectionDescription}>
@@ -307,6 +469,103 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     lineHeight: 20,
+  },
+  languageRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  langPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DDD',
+    backgroundColor: '#FFF',
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  langPillSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#E8F0FF',
+  },
+  langPillDisabled: {
+    opacity: 0.5,
+  },
+  langPillText: {
+    fontSize: 13,
+    color: '#333',
+    fontWeight: '600',
+  },
+  langPillTextSelected: {
+    color: '#007AFF',
+  },
+  dropdownButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#DDD',
+  },
+  dropdownButtonText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#DDD',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+    color: '#000',
+  },
+  optionRow: {
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F2',
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#000',
+  },
+  optionCode: {
+    fontSize: 12,
+    color: '#666',
+  },
+  modalCloseButton: {
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#EEE',
+    borderRadius: 8,
+  },
+  modalCloseText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
   },
 });
 
