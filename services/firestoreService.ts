@@ -1,19 +1,19 @@
 // Firestore service for conversations and messages
 import {
-  addDoc,
-  arrayRemove,
-  arrayUnion,
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where
+    addDoc,
+    arrayRemove,
+    arrayUnion,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    limit,
+    onSnapshot,
+    orderBy,
+    query,
+    serverTimestamp,
+    updateDoc,
+    where
 } from 'firebase/firestore';
 import { getFirebaseDB } from '../lib/firebase';
 import { Conversation, Message, User } from '../types';
@@ -214,6 +214,57 @@ export function subscribeToMessages(
     callback(messages);
   });
 }
+
+// ===== Translations =====
+
+export type TranslationDoc = {
+  status: 'pending' | 'completed' | 'error';
+  translation?: string;
+  noTranslationNeeded?: boolean;
+  detectedSourceLang?: string;
+  confidence?: number;
+  culturalContextHints?: string[];
+  slangExplanations?: { phrase: string; explanation: string }[];
+  error?: string;
+};
+
+/**
+ * Subscribe to a message translation for a specific language
+ */
+export function subscribeToMessageTranslation(
+  conversationId: string,
+  messageId: string,
+  lang: string,
+  callback: (doc: TranslationDoc | null) => void
+) {
+  const d = doc(
+    db,
+    'conversations',
+    conversationId,
+    'messages',
+    messageId,
+    'translations',
+    lang.toLowerCase()
+  );
+  return onSnapshot(d, (snap) => {
+    if (!snap.exists()) {
+      callback(null);
+    } else {
+      const data = snap.data() as any;
+      callback({
+        status: data.status,
+        translation: data.translation,
+        noTranslationNeeded: data.noTranslationNeeded,
+        detectedSourceLang: data.detectedSourceLang,
+        confidence: data.confidence,
+        culturalContextHints: data.culturalContextHints,
+        slangExplanations: data.slangExplanations,
+        error: data.error,
+      });
+    }
+  });
+}
+
 
 /**
  * Update message delivery status

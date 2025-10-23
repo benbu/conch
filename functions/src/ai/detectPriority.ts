@@ -3,11 +3,11 @@
  * Identifies urgent or high-importance messages
  */
 
-import * as admin from 'firebase-admin';
 import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
+import * as admin from 'firebase-admin';
 import { z } from 'zod';
-import { Message, AIPriority, PriorityMessage } from '../types';
+import { AIPriority, Message, PriorityMessage } from '../types';
 
 const PriorityMessageSchema = z.object({
   messageId: z.string().describe('ID of the message'),
@@ -48,9 +48,9 @@ export async function detectPriority(
     .join('\n');
 
   // Detect priority messages using structured output
-  const { object: priorityData } = await generateObject({
-    model: openai('gpt-4-turbo'),
-    schema: PriorityResponseSchema,
+  const { object: priorityData } = (await generateObject({
+    model: openai('gpt-4o-mini') as any,
+    schema: PriorityResponseSchema as any,
     prompt: `You are a helpful assistant that identifies urgent or high-priority messages in team conversations.
 
 Analyze the following conversation and identify messages that are:
@@ -71,13 +71,13 @@ Conversation:
 ${messagesText}
 
 Identify priority messages:`,
-  });
+  } as any)) as any;
 
   // Filter by minimum score
   const minScore = options?.minScore ?? 6;
-  const priorityMessages: PriorityMessage[] = priorityData.priorityMessages
-    .filter((msg) => msg.score >= minScore)
-    .map((msg) => ({
+  const priorityMessages: PriorityMessage[] = (priorityData.priorityMessages as any[])
+    .filter((msg: any) => msg.score >= minScore)
+    .map((msg: any) => ({
       messageId: msg.messageId,
       score: msg.score,
       reason: msg.reason,
@@ -128,12 +128,13 @@ async function fetchMessages(
 
   const snapshot = await query.get();
 
-  return snapshot.docs
-    .map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() ?? new Date(),
-    })) as Message[]
-    .reverse();
+  return (
+    snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() ?? new Date(),
+      })) as Message[]
+  ).reverse();
 }
 

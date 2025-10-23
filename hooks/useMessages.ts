@@ -2,16 +2,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { cacheMessages, getCachedMessages } from '../services/cacheService';
 import {
-  sendMessage as sendMessageToFirestore,
-  subscribeToMessages,
-  updateMessageStatus,
+    sendMessage as sendMessageToFirestore,
+    subscribeToMessages,
+    updateMessageStatus,
 } from '../services/firestoreService';
 import { createOptimisticMessage } from '../services/messages/messageFactory';
 import { selectUser, useAuthStore } from '../stores/authStore';
 import {
-  selectMessageLoading,
-  selectMessages,
-  useChatStore,
+    selectMessageLoading,
+    selectMessages,
+    useChatStore,
 } from '../stores/chatStore';
 import { Message } from '../types';
 import { useOfflineQueue } from './useOfflineQueue';
@@ -35,6 +35,7 @@ export function useMessages(conversationId: string | null) {
   const updateMessage = useChatStore((s) => s.updateMessage);
   const setMessageLoading = useChatStore((s) => s.setMessageLoading);
   const { queueMessage, isConnected } = useOfflineQueue();
+  // Placeholder for translations hook integration in a follow-up edit
 
   // Local pagination state (separate from initial loading)
   const PAGE_SIZE = 50;

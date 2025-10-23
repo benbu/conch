@@ -2,8 +2,8 @@
  * Authentication middleware for Cloud Functions
  */
 
+import { Request, Response } from 'express';
 import * as admin from 'firebase-admin';
-import { Request, Response } from 'firebase-functions/v2/https';
 
 export interface AuthenticatedRequest extends Request {
   user: {

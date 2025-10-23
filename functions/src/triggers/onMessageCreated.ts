@@ -3,13 +3,16 @@
  * Sends push notifications when new messages are created
  */
 
+import { openai } from '@ai-sdk/openai';
+import { generateText } from 'ai';
 import * as admin from 'firebase-admin';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { translateTool } from '../ai/translate';
 import { sendPushNotificationToMultiple } from '../notifications/sendNotification';
 
 export const onMessageCreated = onDocumentCreated(
   'conversations/{conversationId}/messages/{messageId}',
-  async (event) => {
+  async (event: any) => {
     const message = event.data?.data();
     const conversationId = event.params.conversationId;
     const messageId = event.params.messageId;
@@ -72,6 +75,82 @@ export const onMessageCreated = onDocumentCreated(
       console.log(
         `Sent ${result.success} notifications, ${result.failed} failed`
       );
+
+      // Inline translations orchestration
+      try {
+        // Fetch recipients' language settings
+        const userDocs = await Promise.all(
+          recipients.map((id: string) =>
+            admin.firestore().collection('users').doc(id).get()
+          )
+        );
+
+        const targetLangs = new Set<string>();
+        for (const docSnap of userDocs) {
+          const u = docSnap.data() as any;
+          if (u?.autoTranslate && typeof u?.defaultLanguage === 'string' && u.defaultLanguage.trim()) {
+            targetLangs.add((u.defaultLanguage as string).toLowerCase());
+          }
+        }
+
+        if (targetLangs.size > 0 && typeof message.text === 'string' && message.text.trim().length > 0) {
+          await Promise.allSettled(
+            Array.from(targetLangs).map(async (targetLang) => {
+              const ref = admin
+                .firestore()
+                .doc(
+                  `conversations/${conversationId}/messages/${messageId}/translations/${targetLang}`
+                );
+
+              await ref.set(
+                {
+                  status: 'pending',
+                  createdAt: new Date(),
+                  model: process.env.TRANSLATION_MODEL || 'gpt-4o-mini',
+                  provider: 'openai',
+                },
+                { merge: true }
+              );
+
+              try {
+                const { toolResults } = await generateText({
+                  model: openai(process.env.ORCHESTRATOR_MODEL || 'gpt-4o-mini') as any,
+                  tools: { translate: translateTool },
+                  toolChoice: { type: 'tool', toolName: 'translate' },
+                  prompt: JSON.stringify({
+                    targetLang,
+                    text: message.text,
+                    audienceRegion: undefined,
+                  }),
+                });
+
+                const out = toolResults?.[0]?.output as any;
+
+                await ref.set(
+                  {
+                    status: 'completed',
+                    translation: out?.translation || '',
+                    noTranslationNeeded: !!out?.noTranslationNeeded,
+                    detectedSourceLang: out?.detectedSourceLang,
+                    confidence: out?.confidence,
+                    culturalContextHints: out?.culturalContextHints || [],
+                    slangExplanations: out?.slangExplanations || [],
+                    updatedAt: new Date(),
+                  },
+                  { merge: true }
+                );
+              } catch (e: any) {
+                await ref.set(
+                  { status: 'error', error: String(e), updatedAt: new Date() },
+                  { merge: true }
+                );
+              }
+            })
+          );
+        }
+      } catch (e) {
+        console.error('Translation orchestration error:', e);
+      }
     } catch (error) {
       console.error('Error sending notification:', error);
     }

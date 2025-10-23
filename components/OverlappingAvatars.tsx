@@ -26,7 +26,7 @@ export default function OverlappingAvatars({
   };
 
   const avatarSize = sizeMap[size];
-  const overlap = avatarSize * 0.25; // 25% overlap
+  const overlap = avatarSize * 0.7; // 70% overlap for tighter stack
 
   return (
     <TouchableOpacity
@@ -46,7 +46,7 @@ export default function OverlappingAvatars({
                 height: avatarSize,
                 borderRadius: avatarSize / 2,
                 marginLeft: index > 0 ? -overlap : 0,
-                zIndex: visibleMembers.length - index,
+                zIndex: index + 1,
               },
             ]}
           >
@@ -62,7 +62,7 @@ export default function OverlappingAvatars({
                 height: avatarSize,
                 borderRadius: avatarSize / 2,
                 marginLeft: -overlap,
-                zIndex: 0,
+                zIndex: visibleMembers.length + 1,
               },
             ]}
           >
@@ -104,9 +104,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarContainer: {
-    borderWidth: 2,
-    borderColor: '#fff',
-    backgroundColor: '#fff',
+    // remove border/background to eliminate white halo
   },
   avatar: {
     backgroundColor: '#34C759',

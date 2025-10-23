@@ -8,9 +8,10 @@ import GroupNameModal from '@/components/GroupNameModal';
 import MemberManagementModal from '@/components/MemberManagementModal';
 import { MessageBubble } from '@/components/MessageBubble';
 import { ChatHeaderAvatars } from '@/components/chat/ChatHeaderAvatars';
-import { FloatingTitleBar as FloatingTitleBarComp } from '@/components/chat/FloatingTitleBar';
+// Removed floating title bar per new header design
 import { InputBar as InputBarComp } from '@/components/chat/InputBar';
 import { MessageList as MessageListComp } from '@/components/chat/MessageList';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GLASS_INTENSITY, getGlassTint } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAIActions } from '@/hooks/useAIActions';
@@ -21,6 +22,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
 import { useMessages } from '@/hooks/useMessages';
 import { useUserPresence } from '@/hooks/usePresence';
+import { useTranslations } from '@/hooks/useTranslations';
 import { useViewableReadReceipts } from '@/hooks/useViewableReadReceipts';
 import { pickImageFromGallery, uploadConversationImage } from '@/services/imageService';
 import { setCurrentConversation } from '@/services/messageNotificationService';
@@ -79,6 +81,10 @@ export default function ChatScreen() {
     conversation?.type
   );
   const { messages, loading, loadingMore, hasMore, sendMessage, loadMoreMessages } = useMessages(conversationId);
+  const translations = useTranslations(
+    conversationId,
+    messages.map((m) => m.id)
+  );
   const { updateGroupName, addGroupMember, updateMemberRole, leaveGroup, removeMember } = useConversations();
 
   // Get conversation participants
@@ -333,7 +339,7 @@ export default function ChatScreen() {
     
     // Determine if we should show avatar for this message
     const previousMessage = index > 0 ? messages[index - 1] : null;
-    const showAvatar = !isOwn && (!previousMessage || previousMessage.senderId !== item.senderId);
+    const showAvatar = conversation?.type === 'group' && !isOwn && (!previousMessage || previousMessage.senderId !== item.senderId);
     const isStartOfSenderBlock = !previousMessage || previousMessage.senderId !== item.senderId;
     // Ensure the Avatar receives a full user object; fall back to participants by senderId
     const senderUser = item.sender ?? (participants as any[]).find((p: any) => p.id === item.senderId);
@@ -367,16 +373,45 @@ export default function ChatScreen() {
             reason={aiPriority.priority?.priorityMessages.find((p: any) => p.messageId === item.id)?.reason}
           />
         )}
-        <MessageBubble 
-          message={enrichedMessage} 
-          isOwn={isOwn} 
-          showAvatar={showAvatar}
-          showSenderAbove={showSenderAbove}
-          showTimestampBelow={showTimestampBelow}
-          timestampText={timestampText}
-          conversationType={conversation?.type}
-          onRetry={handleRetry} 
-        />
+        <View>
+          <MessageBubble 
+            message={enrichedMessage} 
+            isOwn={isOwn} 
+            showAvatar={showAvatar}
+            showSenderAbove={showSenderAbove}
+            showTimestampBelow={showTimestampBelow}
+            timestampText={timestampText}
+            conversationType={conversation?.type}
+            onRetry={handleRetry} 
+          />
+          {/* Inline translation renderer */}
+          {(() => {
+            const t = translations.get(item.id);
+            if (!t) return null;
+            if (t.status === 'pending') {
+              return (
+                <Text style={{ fontSize: 12, color: '#666', marginTop: 4, marginLeft: isOwn ? 0 : 48 }}>
+                  ⏳ Translating…
+                </Text>
+              );
+            }
+            if (t.status === 'error') {
+              return (
+                <Text style={{ fontSize: 12, color: '#b00020', marginTop: 4, marginLeft: isOwn ? 0 : 48 }}>
+                  Translation unavailable
+                </Text>
+              );
+            }
+            if (t.status === 'completed' && !t.noTranslationNeeded && t.translation) {
+              return (
+                <Text style={{ fontSize: 14, color: '#333', marginTop: 4, marginLeft: isOwn ? 0 : 48 }}>
+                  {t.translation}
+                </Text>
+              );
+            }
+            return null;
+          })()}
+        </View>
       </View>
     );
   };
@@ -397,28 +432,27 @@ export default function ChatScreen() {
     );
   }
 
-  // Custom header title - centered avatars
+  // Custom header: back + avatar(s) + title, left-aligned
   const HeaderTitle = () => (
-    <ChatHeaderAvatars
-      type={conversation?.type}
-      participants={participants}
-      otherUser={otherUser}
-      onPressGroup={() => setShowMemberManagement(true)}
-    />
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}>
+      <TouchableOpacity
+        onPress={() => router.back()}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={{ paddingHorizontal: 8, paddingVertical: 4, marginRight: 4 }}
+      >
+        <IconSymbol name={'chevron.left'} size={22} color={'#fff'} />
+      </TouchableOpacity>
+      <ChatHeaderAvatars
+        type={conversation?.type}
+        participants={participants}
+        otherUser={otherUser}
+        conversationTitle={conversation?.name || conversation?.title}
+        onPressGroup={() => setShowMemberManagement(true)}
+      />
+    </View>
   );
 
-  // Floating title bar component
-  const FloatingTitleBar = () => (
-    <FloatingTitleBarComp
-      type={conversation?.type}
-      conversation={conversation}
-      participantsCount={participants.length}
-      currentUserRole={currentUserRole}
-      onEditGroup={() => setShowGroupNameModal(true)}
-      otherUser={otherUser}
-      presence={presence}
-    />
-  );
+  // Floating title bar removed; title now lives inside header avatars
 
   return (
     <>
@@ -428,6 +462,8 @@ export default function ChatScreen() {
           freezeOnBlur: true,
           headerTransparent: true,
           contentStyle: { backgroundColor: 'transparent' },
+          headerTitleAlign: 'left',
+          headerLeft: () => null,
           headerBackground: () => (
             <BlurView
               tint={getGlassTint(colorScheme === 'dark')}
@@ -449,10 +485,12 @@ export default function ChatScreen() {
       <ConnectionBanner />
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={headerHeight}
+        enabled={Platform.OS === 'ios' ? true : keyboardVisible}
+        behavior={Platform.OS === 'ios' ? (keyboardVisible ? 'position' : undefined) : (keyboardVisible ? 'height' : undefined)}
+        keyboardVerticalOffset={0}
       >
-        <FloatingTitleBar />
+        {/* Push content below transparent header */}
+        <View style={{ height: headerHeight }} />
         <MessageListComp
           flatListRef={flatListRef}
           messages={messages}

@@ -1,5 +1,4 @@
 // Message bubble component with status indicators
-import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Message } from '../types';
 import Avatar from './Avatar';
@@ -118,6 +117,8 @@ export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetr
         {message.text}
         {renderInlineStatusSpan()}
       </Text>
+
+      {/* Inline AI translation placeholder - rendered by parent via children or separate component */}
 
       {/* Retry hint for failed messages */}
       {message.deliveryStatus === 'failed' && (

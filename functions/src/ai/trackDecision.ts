@@ -3,11 +3,11 @@
  * Identifies and records key decisions from conversations
  */
 
-import * as admin from 'firebase-admin';
 import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
+import * as admin from 'firebase-admin';
 import { z } from 'zod';
-import { Message, AIDecision } from '../types';
+import { AIDecision, Message } from '../types';
 
 const DecisionSchema = z.object({
   statement: z.string().describe('Clear statement of the decision made'),
@@ -46,9 +46,9 @@ export async function trackDecision(
     .join('\n');
 
   // Extract decisions using structured output
-  const { object: decisionsData } = await generateObject({
-    model: openai('gpt-4-turbo'),
-    schema: DecisionsResponseSchema,
+  const { object: decisionsData } = (await generateObject({
+    model: openai('gpt-4o-mini') as any,
+    schema: DecisionsResponseSchema as any,
     prompt: `You are a helpful assistant that identifies key decisions in team conversations.
 
 Analyze the following conversation and identify all important decisions that were made.
@@ -69,7 +69,7 @@ Conversation:
 ${messagesText}
 
 Identify all decisions:`,
-  });
+  } as any)) as any;
 
   // Store decisions in Firestore
   const decisions: AIDecision[] = [];
@@ -123,12 +123,13 @@ async function fetchMessages(
 
   const snapshot = await query.get();
 
-  return snapshot.docs
-    .map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() ?? new Date(),
-    })) as Message[]
-    .reverse();
+  return (
+    snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() ?? new Date(),
+      })) as Message[]
+  ).reverse();
 }
 
