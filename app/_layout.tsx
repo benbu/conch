@@ -181,7 +181,7 @@ function RootNavigator() {
           }}
         >
           <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(tabs)" options={{ title: ' ' }} />
           <Stack.Screen
             name="chat/[id]"
             options={{

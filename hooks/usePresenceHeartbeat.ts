@@ -1,3 +1,4 @@
+import { PRESENCE_LOGGING } from '@/constants/featureFlags';
 import { setUserAway, setUserOnline, updatePresence } from '@/services/presenceService';
 import { selectUser, useAuthStore } from '@/stores/authStore';
 import { useEffect, useRef } from 'react';
@@ -46,6 +47,9 @@ export function usePresenceHeartbeat(
     if (!userId || appearOffline) return;
     const now = Date.now();
     lastInteractionAtRef.current = now;
+    if (PRESENCE_LOGGING) {
+      console.log('[presence] activity', { userId, now });
+    }
     // Immediate heartbeat if window elapsed
     if (now - lastHeartbeatAtRef.current >= HEARTBEAT_INTERVAL_MS) {
       sendHeartbeat(userId);
@@ -60,11 +64,16 @@ export function usePresenceHeartbeat(
       const now = Date.now();
       // Only if there was interaction within last 15s
       if (now - lastInteractionAtRef.current <= HEARTBEAT_INTERVAL_MS) {
+        if (PRESENCE_LOGGING) {
+          console.log('[presence] heartbeat → online', { uid, now });
+        }
         await setUserOnline(uid);
         lastHeartbeatAtRef.current = now;
       }
     } catch (e) {
-      // best-effort
+      if (PRESENCE_LOGGING) {
+        console.warn('[presence] heartbeat error', e);
+      }
     }
   };
 
@@ -81,6 +90,9 @@ export function usePresenceHeartbeat(
 
   const startScheduler = (uid: string) => {
     if (schedulerRef.current) return;
+    if (PRESENCE_LOGGING) {
+      console.log('[presence] scheduler:start', { uid });
+    }
     schedulerRef.current = setInterval(() => {
       const now = Date.now();
       // Only send if there's newer interaction not yet heartbeated and 15s window elapsed
@@ -97,6 +109,9 @@ export function usePresenceHeartbeat(
     if (schedulerRef.current) {
       clearInterval(schedulerRef.current);
       schedulerRef.current = null;
+      if (PRESENCE_LOGGING) {
+        console.log('[presence] scheduler:stop');
+      }
     }
   };
 
@@ -116,12 +131,18 @@ export function usePresenceHeartbeat(
 
       if (appState.current.match(/inactive|background/) && nextState === 'active') {
         // Foreground: begin scheduler; do not auto-heartbeat unless recent activity
+        if (PRESENCE_LOGGING) {
+          console.log('[presence] appstate:active');
+        }
         startScheduler(userId);
         resetAwayTimer(userId);
       }
 
       if (appState.current === 'active' && nextState.match(/inactive|background/)) {
         // Background: stop scheduler and set offline immediately
+        if (PRESENCE_LOGGING) {
+          console.log('[presence] appstate:background → offline');
+        }
         stopScheduler();
         if (!appearOffline) {
           await updatePresence(userId, 'offline').catch(() => {});
@@ -137,6 +158,9 @@ export function usePresenceHeartbeat(
 
     // If currently active, start scheduler
     if (appState.current === 'active' && !appearOffline) {
+      if (PRESENCE_LOGGING) {
+        console.log('[presence] init:active');
+      }
       startScheduler(userId);
     }
 
@@ -147,6 +171,9 @@ export function usePresenceHeartbeat(
       appStateSub.remove();
       stopScheduler();
       if (awayTimerRef.current) clearTimeout(awayTimerRef.current);
+      if (PRESENCE_LOGGING) {
+        console.log('[presence] cleanup');
+      }
     };
   }, [userId, appearOffline]);
 }

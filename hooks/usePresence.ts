@@ -1,4 +1,5 @@
 // Custom hook for user presence
+import { PRESENCE_LOGGING } from '@/constants/featureFlags';
 import { useCallback, useEffect, useState } from 'react';
 import {
     setAppearOffline as setAppearOfflineService,
@@ -27,11 +28,17 @@ export function useUserPresence(userId: string | undefined) {
 
     setLoading(true);
     const unsubscribe = subscribeToUserPresence(userId, (newPresence) => {
+      if (PRESENCE_LOGGING) {
+        console.log('[presence] hook:single:update', { userId, newPresence });
+      }
       setPresence(newPresence);
       setLoading(false);
     });
 
     return () => {
+      if (PRESENCE_LOGGING) {
+        console.log('[presence] hook:single:unsubscribe', { userId });
+      }
       unsubscribe();
     };
   }, [userId]);
@@ -55,11 +62,17 @@ export function useMultiplePresences(userIds: string[]) {
 
     setLoading(true);
     const unsubscribe = subscribeToMultiplePresences(userIds, (newPresences) => {
+      if (PRESENCE_LOGGING) {
+        console.log('[presence] hook:multi:update', { userIds, newPresences });
+      }
       setPresences(newPresences);
       setLoading(false);
     });
 
     return () => {
+      if (PRESENCE_LOGGING) {
+        console.log('[presence] hook:multi:unsubscribe', { userIds });
+      }
       unsubscribe();
     };
   }, [JSON.stringify(userIds.sort())]); // Stable dependency on sorted user IDs

@@ -12,4 +12,6 @@ export const NOTIFICATIONS_V2 = true; // Use NotificationGateway + deduper path
 export const READ_RECEIPTS_V2 = false; // Use repository + batching when enabled
 export const PRESENCE_V2 = false; // Use multiplexed presence subscriptions when enabled
 
+// Enable verbose client-side logging for presence lifecycle (development only)
+export const PRESENCE_LOGGING = true;
 

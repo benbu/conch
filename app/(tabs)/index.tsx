@@ -1,7 +1,6 @@
 import Avatar from '@/components/Avatar';
 import OverlappingAvatars from '@/components/OverlappingAvatars';
 import PresenceIndicator from '@/components/PresenceIndicator';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
 import { searchUsers as searchUsersFirestore } from '@/services/firestoreService';
@@ -12,14 +11,12 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
@@ -206,7 +203,7 @@ export default function ChatsScreen() {
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateTitle}>No conversations yet</Text>
           <Text style={styles.emptyStateText}>
-            Tap the + button to start a new chat
+            Use the New tab to start a chat
           </Text>
         </View>
       ) : (
@@ -215,92 +212,10 @@ export default function ChatsScreen() {
           data={conversations}
           renderItem={renderConversation}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={[styles.listContent, { paddingTop: insets.top + 12, paddingBottom: tabBarHeight + 16 }]}
+          //contentContainerStyle={[styles.listContent, { paddingTop: insets.top + 12, paddingBottom: tabBarHeight + 16 }]}
         />
       )}
-
-      {/* Floating New Chat Button */}
-      <TouchableOpacity
-        testID="new-conversation-button"
-        style={[styles.fab, { bottom: tabBarHeight + 16 }]}
-        onPress={() => {
-          setSearchQuery('');
-          setRemoteUsers([]);
-          setShowNewChat(true);
-        }}
-        accessibilityLabel="Start a new chat"
-        accessibilityRole="button"
-      >
-        <IconSymbol name="plus.message" color="#fff" size={28} />
-      </TouchableOpacity>
-
-      {/* New Chat Overlay */}
-      <Modal visible={showNewChat} animationType="fade" transparent onRequestClose={() => setShowNewChat(false)}>
-        <View style={styles.modalBackdrop}>
-          <View testID="new-conversation-modal" style={styles.modalCard}>
-            <View style={styles.searchBarRow}>
-              <TextInput
-                testID="user-search-input"
-                style={styles.searchInput}
-                placeholder="Search or start a new chat..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity onPress={() => setShowNewChat(false)} style={styles.cancelButton}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-
-            {loadingSearch ? (
-              <View style={styles.centered}> 
-                <ActivityIndicator size="large" />
-              </View>
-            ) : (
-              <FlatList
-                data={localFilteredUsers.length > 0 || searchQuery.trim().length < 3 ? localFilteredUsers : remoteUsers}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.listContent}
-                ListEmptyComponent={() => (
-                  <View style={styles.emptyState}>
-                    <Text style={styles.emptyStateText}>
-                      {searchQuery.trim().length >= 3 ? 'No users found' : 'Recent chats appear here'}
-                    </Text>
-                  </View>
-                )}
-                renderItem={({ item, index }) => (
-                  <TouchableOpacity
-                    testID={`user-search-result-${index}`}
-                    style={styles.userRow}
-                    onPress={async () => {
-                      try {
-                        const conversationId = await createConversation([item.id], undefined, 'direct');
-                        setShowNewChat(false);
-                        router.push(`/chat/${conversationId}`);
-                      } catch (error) {
-                        console.error('Failed to start chat', error);
-                      }
-                    }}
-                  >
-                    <View style={styles.avatarContainer}> 
-                      <Avatar user={item} size={50} />
-                      <View style={styles.presenceDot}>
-                        <PresenceIndicator userId={item.id} user={item} size="small" />
-                      </View>
-                    </View>
-                    <View style={styles.userInfo}>
-                      <Text style={styles.displayName}>{item.displayName}</Text>
-                      <Text style={styles.email}>{item.email}</Text>
-                    </View>
-                    <Text style={styles.startChatText}>Chat</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            )}
-          </View>
-        </View>
-      </Modal>
+      {/* New chat flow moved to New tab */}
     </View>
   );
 }
@@ -317,81 +232,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingVertical: 8,
-  },
-  // New Chat FAB
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 30,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#007AFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // New Chat Modal styles
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    maxHeight: '80%',
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingBottom: 16,
-  },
-  searchBarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  searchInput: {
-    flex: 1,
-    height: 44,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 16,
-  },
-  cancelButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  cancelButtonText: {
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  userRow: {
-    flexDirection: 'row',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    alignItems: 'center',
-  },
-  userInfo: {
-    flex: 1,
-  },
-  displayName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 2,
-  },
-  email: {
-    fontSize: 14,
-    color: '#666',
-  },
-  startChatText: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   conversationItem: {
     flexDirection: 'row',
@@ -415,7 +255,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: 23,
     fontWeight: '600',
   },
   presenceDot: {
@@ -437,16 +277,16 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   conversationTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#000',
   },
   timestamp: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#000',
   },
   lastMessage: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#222',
   },
   unreadBadge: {
@@ -463,7 +303,7 @@ const styles = StyleSheet.create({
   },
   unreadText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
   },
   emptyState: {
@@ -473,13 +313,13 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   emptyStateTitle: {
-    fontSize: 20,
+    fontSize: 23,
     fontWeight: '600',
     marginBottom: 8,
     color: '#000',
   },
   emptyStateText: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#666',
     textAlign: 'center',
   },

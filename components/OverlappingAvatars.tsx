@@ -1,5 +1,4 @@
 import { User } from '@/types';
-import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Avatar from './Avatar';
 
@@ -20,7 +19,7 @@ export default function OverlappingAvatars({
   const remainingCount = Math.max(0, members.length - maxVisible);
 
   const sizeMap = {
-    small: 28,
+    small: 38,
     medium: 40,
     large: 50,
   };

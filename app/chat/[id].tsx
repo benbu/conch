@@ -1,7 +1,7 @@
 import { AIActionsList } from '@/components/AIActionsList';
 import { AIDecisionsList } from '@/components/AIDecisionsList';
-import { AIFeatureMenu } from '@/components/AIFeatureMenu';
 import { AIPriorityBadge } from '@/components/AIPriorityBadge';
+import { AISuggestionsSheet } from '@/components/AISuggestionsSheet';
 import { AISummarySheet } from '@/components/AISummarySheet';
 import { ConnectionBanner } from '@/components/ConnectionBanner';
 import GroupNameModal from '@/components/GroupNameModal';
@@ -9,9 +9,9 @@ import MemberManagementModal from '@/components/MemberManagementModal';
 import { MessageBubble } from '@/components/MessageBubble';
 import { ChatHeaderAvatars } from '@/components/chat/ChatHeaderAvatars';
 // Removed floating title bar per new header design
+import { TypingIndicator } from '@/components/TypingIndicator';
 import { InputBar as InputBarComp } from '@/components/chat/InputBar';
 import { MessageList as MessageListComp } from '@/components/chat/MessageList';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GLASS_INTENSITY, getGlassTint } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAIActions } from '@/hooks/useAIActions';
@@ -23,7 +23,9 @@ import { useConversations } from '@/hooks/useConversations';
 import { useMessages } from '@/hooks/useMessages';
 import { useUserPresence } from '@/hooks/usePresence';
 import { useTranslations } from '@/hooks/useTranslations';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useViewableReadReceipts } from '@/hooks/useViewableReadReceipts';
+import { getResponseSuggestions } from '@/services/aiService';
 import { pickImageFromGallery, uploadConversationImage } from '@/services/imageService';
 import { setCurrentConversation } from '@/services/messageNotificationService';
 import { useChatStore } from '@/stores/chatStore';
@@ -58,8 +60,11 @@ export default function ChatScreen() {
   
   const [messageText, setMessageText] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [showAIMenu, setShowAIMenu] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
   const [showActions, setShowActions] = useState(false);
   const [showDecisions, setShowDecisions] = useState(false);
   const [showPriority, setShowPriority] = useState(false);
@@ -128,6 +133,9 @@ export default function ChatScreen() {
   const aiActions = useAIActions(conversationId, { autoLoad: true });
   const aiDecisions = useAIDecisions(conversationId, { autoLoad: true });
   const aiPriority = useAIPriority(conversationId, { autoLoad: true });
+
+  // Typing indicators
+  const { typingText, startTyping, stopTyping } = useTypingIndicator(conversationId);
 
   useEffect(() => {
     // Set current conversation in both chat store and notification service
@@ -263,6 +271,30 @@ export default function ChatScreen() {
     }
   };
 
+  const openSummary = () => {
+    setShowSummary(true);
+    if (!aiSummary.summary) aiSummary.refresh();
+  };
+
+  const refreshSuggestions = async () => {
+    if (!conversationId) return;
+    try {
+      setSuggestionsLoading(true);
+      setSuggestionsError(null);
+      const list = await getResponseSuggestions(conversationId, { lastMessagesN: 10 });
+      setSuggestions(list || []);
+    } catch (e: any) {
+      setSuggestionsError(e?.message || 'Failed to load suggestions');
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
+
+  const openSuggestions = () => {
+    setShowSuggestions(true);
+    if (suggestions.length === 0) refreshSuggestions();
+  };
+
   // Group management handlers
   const handleUpdateGroupName = async (name: string) => {
     if (!conversationId) return;
@@ -379,30 +411,28 @@ export default function ChatScreen() {
           />
         )}
         <View>
-          {/* Inline translation renderer (rendered before timestamp via belowContent) */}
+          {/* Compute optional translation content but always render MessageBubble */}
           {(() => {
             const t = translations.get(item.id);
-            if (!t) return null;
-            if (t.status === 'pending') {
-              return (
-                <Text style={{ fontSize: 12, color: '#666', marginTop: 4, marginLeft: isOwn ? 0 : 48 }}>
-                  ⏳ Translating…
-                </Text>
-              );
-            }
-            if (t.status === 'error') {
-              return (
-                <Text style={{ fontSize: 12, color: '#b00020', marginTop: 4, marginLeft: isOwn ? 0 : 48 }}>
-                  Translation unavailable
-                </Text>
-              );
-            }
-            const detail = (() => {
-              if (t.status === 'completed' && !t.noTranslationNeeded && t.translation) {
+            let below: React.ReactNode = null;
+            if (t) {
+              if (t.status === 'pending') {
+                below = (
+                  <Text style={{ fontSize: 12, color: '#666', marginTop: 4, marginLeft: isOwn ? 0 : 48 }}>
+                    ⏳ Translating…
+                  </Text>
+                );
+              } else if (t.status === 'error') {
+                below = (
+                  <Text style={{ fontSize: 12, color: '#b00020', marginTop: 4, marginLeft: isOwn ? 0 : 48 }}>
+                    Translation unavailable
+                  </Text>
+                );
+              } else if (t.status === 'completed' && !t.noTranslationNeeded && t.translation) {
                 const hasDetails = !!t.culturalContextHints?.length || !!t.slangExplanations?.length;
                 const isExpanded = !!expandedTranslations[item.id];
                 const toggleExpand = () => setExpandedTranslations((prev) => ({ ...prev, [item.id]: !prev[item.id] }));
-                return (
+                below = (
                   <View style={[styles.translationBubble, { marginLeft: isOwn ? 0 : 48 }]}>
                     <Text style={styles.translationText}>{t.translation}</Text>
                     {hasDetails && (
@@ -436,19 +466,18 @@ export default function ChatScreen() {
                   </View>
                 );
               }
-              return null;
-            })();
+            }
             return (
-              <MessageBubble 
-                message={enrichedMessage} 
-                isOwn={isOwn} 
+              <MessageBubble
+                message={enrichedMessage}
+                isOwn={isOwn}
                 showAvatar={showAvatar}
                 showSenderAbove={showSenderAbove}
                 showTimestampBelow={showTimestampBelow}
                 timestampText={timestampText}
                 conversationType={conversation?.type}
                 onRetry={handleRetry}
-                belowContent={detail}
+                belowContent={below}
               />
             );
           })()}
@@ -475,7 +504,7 @@ export default function ChatScreen() {
 
   // Custom header: avatar(s) + title, left-aligned
   const HeaderTitle = () => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 0 }}>
       <ChatHeaderAvatars
         type={conversation?.type}
         participants={participants}
@@ -495,29 +524,20 @@ export default function ChatScreen() {
           animation: 'fade',
           freezeOnBlur: true,
           headerTransparent: true,
-          contentStyle: { backgroundColor: 'transparent' },
-          headerTitleAlign: 'left',
+          headerBackTitle: '',
+          contentStyle: { backgroundColor: 'white' },
+          headerTitleAlign: 'center',
           headerBackground: () => (
             <BlurView
               tint={getGlassTint(colorScheme === 'dark')}
               intensity={GLASS_INTENSITY}
-              style={StyleSheet.absoluteFill}
+              style={[StyleSheet.absoluteFill, { borderBottomWidth: 1, borderBottomColor: '#ddd' }]}
             />
           ),
           headerTitle: () => <HeaderTitle />,
-          headerRight: () => (
-            <TouchableOpacity
-              onPress={() => setShowAIMenu(true)}
-              style={{ paddingHorizontal: 8, paddingVertical: 6, marginRight: 8 }}
-              accessibilityLabel="AI menu"
-              accessibilityRole="button"
-            >
-              <IconSymbol name="sparkles" color="#000" size={22} />
-            </TouchableOpacity>
-          ),
+          // AI menu trigger moved into InputBar
         }}
       />
-      <ConnectionBanner />
       <KeyboardAvoidingView
         style={styles.container}
         enabled={Platform.OS === 'ios' ? true : keyboardVisible}
@@ -538,6 +558,12 @@ export default function ChatScreen() {
           footerSpacerHeight={keyboardVisible ? 0 : inputBarHeight}
         />
 
+        <ConnectionBanner />
+        {typingText ? (
+          <View style={{ paddingHorizontal: 16, paddingVertical: 6 }}>
+            <TypingIndicator text={typingText} />
+          </View>
+        ) : null}
         <View
           onLayout={(e) => {
             const h = e.nativeEvent.layout.height;
@@ -551,30 +577,15 @@ export default function ChatScreen() {
             setMessageText={setMessageText}
             onSend={handleSend}
             keyboardVisible={keyboardVisible}
+            onOpenAISummary={openSummary}
+            onOpenAISuggestions={openSuggestions}
+            onTyping={startTyping}
+            onTypingStop={stopTyping}
           />
         </View>
       </KeyboardAvoidingView>
 
-      {/* AI Feature Menu */}
-      <AIFeatureMenu
-        visible={showAIMenu}
-        onClose={() => setShowAIMenu(false)}
-        onSummary={() => {
-          setShowSummary(true);
-          if (!aiSummary.summary) aiSummary.refresh();
-        }}
-        onActions={() => {
-          setShowActions(true);
-          if (!aiActions.actions) aiActions.refresh();
-        }}
-        onDecisions={() => {
-          setShowDecisions(true);
-          if (aiDecisions.decisions.length === 0) aiDecisions.refresh();
-        }}
-        onPriority={() => {
-          aiPriority.refresh();
-        }}
-      />
+
 
       {/* AI Summary Sheet */}
       <AISummarySheet
@@ -584,6 +595,20 @@ export default function ChatScreen() {
         loading={aiSummary.loading}
         error={aiSummary.error}
         onRefresh={aiSummary.refresh}
+      />
+
+      {/* AI Suggestions Sheet */}
+      <AISuggestionsSheet
+        visible={showSuggestions}
+        onClose={() => setShowSuggestions(false)}
+        suggestions={suggestions}
+        loading={suggestionsLoading}
+        error={suggestionsError}
+        onRefresh={refreshSuggestions}
+        onInsert={(text) => {
+          setShowSuggestions(false);
+          setMessageText((prev) => prev ? `${prev}${prev.endsWith(' ') ? '' : ' '}${text}` : text);
+        }}
       />
 
       {/* AI Actions List */}
@@ -783,7 +808,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   translationText: {
-    fontSize: 15,
+    fontSize: 17,
     color: '#1a1a1a',
   },
   translationSection: {
@@ -799,23 +824,23 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   translationToggleText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#4466AA',
     fontWeight: '600',
   },
   translationChevron: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#4466AA',
     marginLeft: 8,
   },
   translationMetaTitle: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#4466AA',
     fontWeight: '600',
     marginBottom: 2,
   },
   translationMetaItem: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#4A4A4A',
     lineHeight: 16,
   },

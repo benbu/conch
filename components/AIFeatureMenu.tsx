@@ -3,14 +3,13 @@
  * Menu for accessing AI features in a conversation
  */
 
-import React from 'react';
 import {
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface AIFeatureMenuProps {

@@ -1,14 +1,14 @@
 // Presence tracking service using Firebase Realtime Database
 import {
-    get,
-    onDisconnect,
-    onValue,
-    ref,
-    set,
-    update
+  get,
+  onDisconnect,
+  onValue,
+  ref,
+  set,
+  update
 } from 'firebase/database';
 import { doc, updateDoc } from 'firebase/firestore';
-import { PRESENCE_V2 } from '../constants/featureFlags';
+import { PRESENCE_LOGGING, PRESENCE_V2 } from '../constants/featureFlags';
 import { getFirebaseDB, getFirebaseRealtimeDB } from '../lib/firebase';
 import { UserPresence } from '../types';
 import { cleanupPresenceRegistry, subscribeToPresence, subscribeToPresences } from './presence/PresenceRegistry';
@@ -38,6 +38,9 @@ export async function updatePresence(
       presenceData.customStatus = customStatus || undefined;
     }
 
+    if (PRESENCE_LOGGING) {
+      console.log('[presence] updatePresence', { userId, status, customStatus: presenceData.customStatus });
+    }
     await set(presenceRef, presenceData);
   } catch (error: any) {
     console.error('Error updating presence:', error);
@@ -88,12 +91,18 @@ export function subscribeToUserPresence(
     (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
+        if (PRESENCE_LOGGING) {
+          console.log('[presence] onValue', { userId, data });
+        }
         callback({
           status: data.status || 'offline',
           lastSeen: data.lastSeen || Date.now(),
           customStatus: data.customStatus,
         });
       } else {
+        if (PRESENCE_LOGGING) {
+          console.log('[presence] onValue:null', { userId });
+        }
         callback(null);
       }
     },
@@ -133,6 +142,9 @@ export function subscribeToMultiplePresences(
   userIds.forEach((userId) => {
     const unsubscribe = subscribeToUserPresence(userId, (presence) => {
       presences[userId] = presence;
+      if (PRESENCE_LOGGING) {
+        console.log('[presence] multi:update', { userId, presence });
+      }
       callback({ ...presences });
     });
     unsubscribers.push(unsubscribe);
@@ -187,6 +199,9 @@ export async function startPresenceTracking(
       lastSeen: Date.now(),
     };
 
+    if (PRESENCE_LOGGING) {
+      console.log('[presence] startTracking', { userId, appearOffline });
+    }
     await set(presenceRef, initialStatus);
 
     // Only set up onDisconnect if not appearing offline
@@ -237,7 +252,9 @@ export async function stopPresenceTracking(userId: string): Promise<void> {
       }
     });
 
-    console.log('✅ Presence tracking stopped for user:', userId);
+    if (PRESENCE_LOGGING) {
+      console.log('✅ Presence tracking stopped for user:', userId);
+    }
   } catch (error: any) {
     console.error('Error stopping presence tracking:', error);
     throw new Error(error.message || 'Failed to stop presence tracking');
@@ -250,6 +267,9 @@ export async function stopPresenceTracking(userId: string): Promise<void> {
 export async function setUserAway(userId: string): Promise<void> {
   try {
     const presenceRef = ref(realtimeDb, `presence/${userId}`);
+    if (PRESENCE_LOGGING) {
+      console.log('[presence] setAway', { userId });
+    }
     await update(presenceRef, {
       status: 'away',
       lastSeen: Date.now(),
@@ -265,6 +285,9 @@ export async function setUserAway(userId: string): Promise<void> {
 export async function setUserOnline(userId: string): Promise<void> {
   try {
     const presenceRef = ref(realtimeDb, `presence/${userId}`);
+    if (PRESENCE_LOGGING) {
+      console.log('[presence] setOnline', { userId });
+    }
     await update(presenceRef, {
       status: 'online',
       lastSeen: Date.now(),
@@ -278,6 +301,9 @@ export async function setUserOnline(userId: string): Promise<void> {
  * Heartbeat wrapper for clarity, currently maps to setUserOnline
  */
 export async function heartbeat(userId: string): Promise<void> {
+  if (PRESENCE_LOGGING) {
+    console.log('[presence] heartbeat()', { userId });
+  }
   await setUserOnline(userId);
 }
 
@@ -290,6 +316,9 @@ export async function updateCustomStatus(
 ): Promise<void> {
   try {
     const presenceRef = ref(realtimeDb, `presence/${userId}`);
+    if (PRESENCE_LOGGING) {
+      console.log('[presence] customStatus', { userId, customStatus });
+    }
     await update(presenceRef, {
       customStatus: customStatus || null,
       lastSeen: Date.now(),
@@ -311,6 +340,8 @@ export function cleanupAllPresenceListeners(): void {
   if (PRESENCE_V2) {
     cleanupPresenceRegistry();
   }
-  console.log('✅ All presence listeners cleaned up');
+  if (PRESENCE_LOGGING) {
+    console.log('[presence] cleanupAllListeners');
+  }
 }
 

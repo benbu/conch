@@ -11,7 +11,12 @@ import {
     AISummary,
 } from '../types';
 
-const FUNCTIONS_BASE_URL = process.env.EXPO_PUBLIC_FUNCTIONS_URL || 'https://us-central1-YOUR-PROJECT-ID.cloudfunctions.net';
+const FUNCTIONS_REGION = process.env.EXPO_PUBLIC_FUNCTIONS_REGION || 'us-central1';
+const FIREBASE_PROJECT_ID = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID;
+const DEFAULT_FUNCTIONS_BASE_URL = FIREBASE_PROJECT_ID
+  ? `https://${FUNCTIONS_REGION}-${FIREBASE_PROJECT_ID}.cloudfunctions.net`
+  : undefined;
+const FUNCTIONS_BASE_URL = process.env.EXPO_PUBLIC_FUNCTIONS_URL || DEFAULT_FUNCTIONS_BASE_URL;
 
 interface AIRequestOptions {
   messageLimit?: number;
@@ -40,20 +45,35 @@ async function callFunction<T>(
   endpoint: string,
   data: any
 ): Promise<T> {
+  if (!FUNCTIONS_BASE_URL) {
+    throw new Error(
+      'Cloud Functions base URL is not configured. Set EXPO_PUBLIC_FUNCTIONS_URL or EXPO_PUBLIC_FIREBASE_PROJECT_ID.'
+    );
+  }
   const token = await getAuthToken();
 
-  const response = await fetch(`${FUNCTIONS_BASE_URL}/${endpoint}`, {
+  const url = `${FUNCTIONS_BASE_URL}/${endpoint}`;
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify(data),
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    // Prefer JSON error; otherwise include status/text snippet for easier debugging
+    const errorJson = await response
+      .json()
+      .catch(async () => {
+        const text = await response.text().catch(() => '');
+        return { message: text?.slice(0, 200) || null };
+      });
+    const message =
+      errorJson?.message || `HTTP ${response.status} ${response.statusText} at ${url}`;
+    throw new Error(message);
   }
 
   const result = await response.json();
@@ -107,6 +127,19 @@ export async function detectPriority(
   options?: AIRequestOptions
 ): Promise<AIPriority> {
   return await callFunction<AIPriority>('aiDetectPriority', {
+    conversationId,
+    options,
+  });
+}
+
+/**
+ * Get AI response suggestions for the conversation
+ */
+export async function getResponseSuggestions(
+  conversationId: string,
+  options?: { lastMessagesN?: number }
+): Promise<string[]> {
+  return await callFunction<string[]>('aiSuggestResponses', {
     conversationId,
     options,
   });

@@ -9,17 +9,17 @@ import { Message, User } from '@/types';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { format } from 'date-fns';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    SectionList,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  SectionList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -43,7 +43,15 @@ export default function ExploreScreen() {
   const { user } = useAuth();
   const { conversations, createConversation } = useConversations();
   const router = useRouter();
+  const params = useLocalSearchParams<{ startGroup?: string }>();
   const participantsByConversation = useChatStore((state) => state.conversationParticipants);
+
+  // Auto-enter multi-select mode if navigated with startGroup flag
+  React.useEffect(() => {
+    if (params?.startGroup && !isMultiSelectMode) {
+      setIsMultiSelectMode(true);
+    }
+  }, [params?.startGroup, isMultiSelectMode]);
 
   // Build local users from recent conversations
   const localUsers: User[] = useMemo(() => {
@@ -216,10 +224,32 @@ export default function ExploreScreen() {
   };
 
   const handleCreateGroup = () => {
-    if (selectedUsers.length < 2) {
-      Alert.alert('Error', 'Please select at least 2 users to create a group');
+    if (selectedUsers.length === 0) {
+      Alert.alert('Error', 'Please select at least 1 user');
       return;
     }
+    if (selectedUsers.length === 1) {
+      // Single user -> direct chat
+      const only = selectedUsers[0];
+      (async () => {
+        try {
+          const existingConv = conversations.find(
+            (c) => c.type === 'direct' && c.participantIds.includes(only.id)
+          );
+          if (existingConv) {
+            router.push(`/chat/${existingConv.id}`);
+            return;
+          }
+          const convId = await createConversation([only.id], undefined, 'direct');
+          router.push(`/chat/${convId}`);
+        } catch (error) {
+          console.error('Failed to start chat', error);
+          Alert.alert('Error', 'Failed to start chat');
+        }
+      })();
+      return;
+    }
+    // 2+ users -> group flow
     setShowGroupNameModal(true);
   };
 
@@ -315,7 +345,16 @@ export default function ExploreScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 12, paddingBottom: tabBarHeight }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop: insets.top + 12,
+          paddingBottom:
+            tabBarHeight + (isMultiSelectMode && selectedUsers.length >= 1 ? 96 : 0),
+        },
+      ]}
+    >
       <View style={styles.searchContainer}>
         {isMultiSelectMode && (
           <View style={styles.selectionHeader}>
@@ -386,7 +425,7 @@ export default function ExploreScreen() {
                 style={styles.deepSearchButton}
                 onPress={handleDeepSearch}
               >
-                <Text style={styles.deepSearchButtonText}>🔍 Search for more results</Text>
+                <Text style={styles.deepSearchButtonText}>🔍 Show more results...</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -394,14 +433,14 @@ export default function ExploreScreen() {
       )}
 
       {/* Floating action button for group creation */}
-      {isMultiSelectMode && selectedUsers.length >= 2 && (
-        <View style={styles.fab}>
+      {isMultiSelectMode && selectedUsers.length >= 1 && (
+        <View style={[styles.fab, { bottom: tabBarHeight + 24 }]}>
           <TouchableOpacity
             style={styles.fabButton}
             onPress={handleCreateGroup}
           >
             <Text style={styles.fabText}>
-              Create Group ({selectedUsers.length})
+              {selectedUsers.length === 1 ? 'Start Chat' : `Create Group (${selectedUsers.length})`}
             </Text>
           </TouchableOpacity>
         </View>
@@ -548,14 +587,19 @@ const styles = StyleSheet.create({
   },
   deepSearchButton: {
     backgroundColor: '#007AFF',
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   deepSearchButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
   },
   selectionHeader: {
