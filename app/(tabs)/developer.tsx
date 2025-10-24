@@ -5,7 +5,7 @@ import { getTranslationErrorsForUser } from '@/services/firestoreService';
 import { clearFailedMessages, clearQueue, getQueueStats } from '@/services/offlineQueueService';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type TranslationErrorItem = Awaited<ReturnType<typeof getTranslationErrorsForUser>>[number];
@@ -105,6 +105,49 @@ export default function DeveloperScreen() {
           <Text style={styles.menuItemText}>Clear All</Text>
           <Text style={styles.menuItemChevron}>›</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Chat UI Theme Previews */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Chat UI Theme Previews</Text>
+        {[
+          'glass-aurora',
+          'minimal-light',
+          'amoled-neon',
+          'imessage-classic',
+          'glassomorphic',
+          'vibrant',
+          'chill',
+          'electric',
+          'spacey',
+          'futuristic',
+          'modern',
+          'sleek',
+          'pastel',
+          'sunset',
+          'midnight',
+          'oceanic',
+        ].map((id) => (
+          <TouchableOpacity key={id} style={styles.menuItem} onPress={() => router.push(`/preview/chat-list?theme=${id}`)} testID={`preview-${id}`}>
+            <Text style={styles.menuItemText}>{id}</Text>
+            <Text style={styles.menuItemChevron}>›</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Size options baked here */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Preview Size Options</Text>
+        {[
+          { label: 'Compact', qs: 'compact' },
+          { label: 'Cozy', qs: 'cozy' },
+          { label: 'Comfortable', qs: 'comfortable' },
+        ].map((opt) => (
+          <TouchableOpacity key={opt.qs} style={styles.menuItem} onPress={() => router.push(`/preview/chat-list?theme=glass-aurora&size=${opt.qs}`)} testID={`preview-size-${opt.qs}`}>
+            <Text style={styles.menuItemText}>{opt.label}</Text>
+            <Text style={styles.menuItemChevron}>›</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {IN_APP_NOTIFICATIONS_ENABLED && (

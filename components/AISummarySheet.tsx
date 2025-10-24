@@ -4,22 +4,24 @@
  */
 
 import { format } from 'date-fns';
-import React from 'react';
 import {
-    ActivityIndicator,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { AISummary } from '../types';
+import Markdown from 'react-native-markdown-display';
+import { Summary } from '../types';
 
 interface AISummarySheetProps {
   visible: boolean;
   onClose: () => void;
-  summary: AISummary | null;
+  summary: Summary | null;
   loading: boolean;
   error: string | null;
   onRefresh: () => void;
@@ -76,8 +78,16 @@ export function AISummarySheet({
 
             {summary && !loading && !error && (
               <View style={styles.summaryContainer}>
-                <Text style={styles.summaryText}>{summary.text}</Text>
-                
+                <Markdown
+                  style={markdownStyles}
+                  onLinkPress={(url: string) => {
+                    try { Linking.openURL(url); } catch {}
+                    return true;
+                  }}
+                >
+                  {summary.text}
+                </Markdown>
+
                 <View style={styles.metadata}>
                   <Text style={styles.metadataText}>
                     Generated {format(new Date(summary.createdAt), 'MMM d, yyyy h:mm a')}
@@ -224,4 +234,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+// Markdown theme styles to match app typography
+const markdownStyles = {
+  body: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#000',
+  },
+  heading1: { fontSize: 22, fontWeight: '700', marginTop: 8, marginBottom: 8 },
+  heading2: { fontSize: 20, fontWeight: '700', marginTop: 8, marginBottom: 8 },
+  heading3: { fontSize: 18, fontWeight: '700', marginTop: 8, marginBottom: 8 },
+  paragraph: { marginTop: 6, marginBottom: 6 },
+  bullet_list: { marginTop: 6, marginBottom: 6 },
+  ordered_list: { marginTop: 6, marginBottom: 6 },
+  list_item: { marginVertical: 2 },
+  code_inline: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }) as any,
+  },
+  code_block: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 12,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }) as any,
+  },
+  link: { color: '#007AFF' },
+  strong: { fontWeight: '700' },
+  em: { fontStyle: 'italic' },
+} as const;
 

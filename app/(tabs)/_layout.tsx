@@ -1,5 +1,5 @@
 import { BlurView } from 'expo-blur';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
 
   return (
     <Tabs
@@ -16,8 +17,19 @@ export default function TabLayout() {
       screenOptions={{
         freezeOnBlur: true,
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        sceneStyle: { backgroundColor: 'transparent' },
+        headerShown: true,
+        sceneStyle: { backgroundColor: 'white' },
+        headerBackground: () => (
+          <BlurView
+            tint={getGlassTint(colorScheme === 'dark')}
+            intensity={GLASS_INTENSITY}
+            style={[StyleSheet.absoluteFill, { borderBottomWidth: 1, borderBottomColor: '#ddd', alignItems: 'center' }]}
+          />
+        ),
+        headerStyle: {
+          borderBottomWidth: 5,
+          borderBottomColor: '#999'
+        },
         tabBarBackground: () => (
           <BlurView
             tint={getGlassTint(colorScheme === 'dark')}
@@ -27,7 +39,7 @@ export default function TabLayout() {
         ),
         tabBarStyle: {
           backgroundColor: 'transparent',
-          borderTopWidth: 0,
+          borderTopWidth: 1,
           position: 'absolute',
           elevation: 0,
         },
@@ -42,11 +54,21 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="new"
         options={{
-          title: 'Search',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="magnifyingglass" color={color} />,
-          tabBarAccessibilityLabel: 'tab-explore',
+          title: 'New',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="plus.message" color={color} />,
+          tabBarAccessibilityLabel: 'tab-new',
+          // When pressing the New tab, immediately open the group creation flow
+          tabBarButton: (props) => (
+            <HapticTab
+              {...props}
+              onPress={() => {
+                // Route to Explore with a flag that triggers multi-select/group flow
+                router.push('/(tabs)/explore?startGroup=1');
+              }}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -55,6 +77,14 @@ export default function TabLayout() {
           title: 'Profile',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
           tabBarAccessibilityLabel: 'tab-profile',
+        }}
+      />
+      {/* Keep Explore screen available but hidden from the tab bar */}
+      <Tabs.Screen
+        name="explore"
+        options={{
+          href: null,
+          title: 'New Chat',
         }}
       />
       <Tabs.Screen

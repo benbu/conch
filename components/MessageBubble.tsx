@@ -158,7 +158,7 @@ export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetr
   return (
     <View style={[styles.messageRow, showAvatar ? styles.newOtherSenderTopGap : undefined]}>
       {/* Avatar or spacer */}
-      <View style={styles.avatarContainer}>
+      <View style={showTimestampBelow ? [styles.avatarContainer, styles.avatarContainerRelative] : styles.avatarContainer}>
         {showAvatar ? (
           <Avatar user={message.sender} size={40} />
         ) : (
@@ -191,7 +191,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     marginRight: 8,
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-end',
+  },
+  avatarContainerRelative: {
+    position: 'relative',
+    bottom: 19,
   },
   avatar: {
     width: 40,
@@ -209,7 +213,7 @@ const styles = StyleSheet.create({
   },
   avatarInitials: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
   },
   avatarSpacer: {
@@ -236,7 +240,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E9E9EB',
   },
   senderName: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#000',
     marginBottom: 4,
     fontWeight: '600',
@@ -251,7 +255,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   messageText: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#000',
     marginBottom: 2,
   },
@@ -265,7 +269,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   timestamp: {
-    fontSize: 11,
+    fontSize: 13,
     color: '#999',
   },
   ownTimestamp: {
@@ -273,12 +277,12 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   statusIcon: {
-    fontSize: 11,
+    fontSize: 13,
     color: '#fff',
     opacity: 0.7,
   },
   statusIconInline: {
-    fontSize: 11,
+    fontSize: 13,
     color: '#bbb',
     opacity: 0.9,
     marginLeft: 6,
@@ -294,7 +298,7 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
   failedHint: {
-    fontSize: 10,
+    fontSize: 12,
     color: '#FF3B30',
     marginTop: 4,
     fontStyle: 'italic',
@@ -307,13 +311,13 @@ const styles = StyleSheet.create({
   },
   // Metadata outside the bubble
   metaAbove: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#000',
     marginBottom: 2,
     fontWeight: '600',
   },
   metaBelow: {
-    fontSize: 11,
+    fontSize: 13,
     color: '#000',
     marginTop: 2,
   },

@@ -1,10 +1,10 @@
 /**
  * Typing Indicator Service
- * Handles real-time typing indicators
+ * Handles real-time typing indicators (RTDB-backed)
  */
 
-import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { onDisconnect, onValue, ref, remove, serverTimestamp, set } from 'firebase/database';
+import { auth, getFirebaseRealtimeDB } from '../lib/firebase';
 
 const TYPING_TIMEOUT = 3000; // 3 seconds
 let typingTimer: NodeJS.Timeout | null = null;
@@ -20,16 +20,22 @@ export async function setTyping(
     const user = auth.currentUser;
     if (!user) return;
 
-    const typingRef = doc(db, 'conversations', conversationId, 'typing', user.uid);
+    const rtdb = getFirebaseRealtimeDB();
+    const typingRef = ref(rtdb, `typing/${conversationId}/${user.uid}`);
 
     if (isTyping) {
-      await setDoc(typingRef, {
+      await set(typingRef, {
         userId: user.uid,
         displayName: user.displayName || 'Someone',
-        timestamp: new Date(),
+        timestamp: serverTimestamp(),
       });
+      try {
+        onDisconnect(typingRef).remove();
+      } catch {
+        // ignore
+      }
     } else {
-      await deleteDoc(typingRef);
+      await remove(typingRef);
     }
   } catch (error) {
     console.error('Error setting typing indicator:', error);
@@ -78,25 +84,23 @@ export function subscribeToTypingIndicators(
     return () => {};
   }
 
-  const typingRef = collection(db, 'conversations', conversationId, 'typing');
-  
-  const unsubscribe = onSnapshot(typingRef, (snapshot) => {
-    const typingUsers = snapshot.docs
-      .map((doc) => doc.data() as { userId: string; displayName: string; timestamp: Date })
-      .filter((data) => data.userId !== user.uid) // Exclude current user
-      .filter((data) => {
-        // Filter out stale typing indicators (older than 5 seconds)
-        const age = Date.now() - new Date(data.timestamp).getTime();
-        return age < 5000;
+  const rtdb = getFirebaseRealtimeDB();
+  const convRef = ref(rtdb, `typing/${conversationId}`);
+
+  const off = onValue(convRef, (snapshot) => {
+    const value = snapshot.val() || {} as Record<string, { userId: string; displayName: string; timestamp?: number }>;
+    const now = Date.now();
+    const typingUsers = Object.entries(value)
+      .filter(([uid]) => uid !== user.uid)
+      .filter(([, data]) => {
+        const ts = typeof data.timestamp === 'number' ? data.timestamp : 0;
+        return !ts || now - ts < 5000;
       })
-      .map((data) => ({
-        userId: data.userId,
-        displayName: data.displayName,
-      }));
+      .map(([uid, data]) => ({ userId: uid, displayName: data.displayName }));
 
     callback(typingUsers);
   });
 
-  return unsubscribe;
+  return () => off();
 }
 

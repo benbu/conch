@@ -1,0 +1,16 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "typing": {
+      "$conversationId": {
+        "$userId": {
+          ".read": "auth != null", // tighten to participants if needed
+          ".write": "auth != null && auth.uid == $userId"
+        }
+      }
+    }
+  }
+}
+
+

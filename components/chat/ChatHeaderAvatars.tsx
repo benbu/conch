@@ -18,12 +18,12 @@ export function ChatHeaderAvatars({
         style={{ flexDirection: 'row', alignItems: 'center' }}
       >
         <OverlappingAvatars members={participants} maxVisible={3} size="small" />
-        <Text style={{ marginLeft: 8, color: '#fff', fontWeight: '600' }} numberOfLines={1}>
+        <Text style={{ marginLeft: 8, color: '#000', fontWeight: '600', fontSize: 18 }} numberOfLines={1}>
           ({participants?.length || 0})
         </Text>
         {conversationTitle ? (
           <Text
-            style={{ marginLeft: 8, color: '#fff', fontWeight: '600' }}
+            style={{ marginLeft: 8, color: '#000', fontWeight: '600', fontSize: 18 }}
             numberOfLines={1}
           >
             {conversationTitle}
@@ -35,10 +35,10 @@ export function ChatHeaderAvatars({
   if (otherUser) {
     return (
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <AvatarWithPresence user={otherUser} size={32}>
-          <Avatar user={otherUser} size={32} />
+        <AvatarWithPresence user={otherUser} size={40}>
+          <Avatar user={otherUser} size={40} />
         </AvatarWithPresence>
-        <Text style={{ marginLeft: 10, color: '#fff', fontWeight: '600' }} numberOfLines={1}>
+        <Text style={{ marginLeft: 10, color: '#000', fontWeight: '600', fontSize: 18 }} numberOfLines={1}>
           {otherUser.displayName || 'Chat'}
         </Text>
       </View>

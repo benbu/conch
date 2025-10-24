@@ -72,13 +72,8 @@ export async function logout() {
  * Create a new conversation
  */
 export async function createConversation(recipientName: string) {
-  // Tap new conversation button
-  await element(by.id('new-conversation-button')).tap();
-
-  // Wait for modal
-  await waitFor(element(by.id('new-conversation-modal')))
-    .toBeVisible()
-    .withTimeout(3000);
+  // Navigate to New tab
+  await element(by.label('tab-new')).tap();
 
   // Search for recipient
   await element(by.id('user-search-input')).typeText(recipientName);
