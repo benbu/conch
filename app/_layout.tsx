@@ -1,16 +1,14 @@
 import { presenceClient } from '@/services/presenceClient';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { AppState, AppStateStatus, StyleSheet } from 'react-native';
+import { AppState, AppStateStatus, StyleSheet, View } from 'react-native';
 import 'react-native-reanimated';
 
 import { InAppNotification } from '@/components/InAppNotification';
 import { IN_APP_NOTIFICATIONS_ENABLED, LOCAL_NOTIFICATIONS_IN_EXPO_GO } from '@/constants/featureFlags';
-import { GLASS_INTENSITY, getGlassTint } from '@/constants/theme';
 import { AuthProvider, useAuthContext } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -181,10 +179,8 @@ function RootNavigator() {
               headerShown: true,
               headerTransparent: true,
               headerBackground: () => (
-                <BlurView
-                  tint={getGlassTint(colorScheme === 'dark')}
-                  intensity={GLASS_INTENSITY}
-                  style={StyleSheet.absoluteFill}
+                <View
+                  style={[StyleSheet.absoluteFill, { backgroundColor: '#f5f5f5' }]}
                 />
               ),
             }}

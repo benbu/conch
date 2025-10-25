@@ -1,8 +1,7 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, GLASS_INTENSITY, getGlassBorder, getGlassTint } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { emitPresenceActivity } from '@/hooks/usePresenceActivity';
-import { BlurView } from 'expo-blur';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Modal, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -64,7 +63,7 @@ export function InputBar({
   const closeAIShelf = useCallback(() => setAIShelfVisible(false), []);
 
   return (
-    <BlurView tint={getGlassTint(isDark)} intensity={GLASS_INTENSITY} style={{
+    <View style={{
       flexDirection: 'row',
       paddingHorizontal: 8,
       paddingTop: 8,
@@ -72,7 +71,8 @@ export function InputBar({
       alignItems: 'center',
       gap: 8,
       borderTopWidth: 1,
-      borderTopColor: getGlassBorder(isDark),
+      borderTopColor: '#ddd',
+      backgroundColor: '#f5f5f5',
     }}>
       <TouchableOpacity
         accessibilityRole="button"
@@ -153,7 +153,7 @@ export function InputBar({
           </TouchableOpacity>
         </Modal>
       )}
-    </BlurView>
+    </View>
   );
 }
 

@@ -1,10 +1,9 @@
-import { BlurView } from 'expo-blur';
 import { Tabs, useRouter } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, GLASS_INTENSITY, getGlassTint } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
@@ -20,10 +19,8 @@ export default function TabLayout() {
         headerShown: true,
         sceneStyle: { backgroundColor: 'white' },
         headerBackground: () => (
-          <BlurView
-            tint={getGlassTint(colorScheme === 'dark')}
-            intensity={GLASS_INTENSITY}
-            style={[StyleSheet.absoluteFill, { borderBottomWidth: 1, borderBottomColor: '#ddd', alignItems: 'center' }]}
+          <View
+            style={[StyleSheet.absoluteFill, { backgroundColor: '#f5f5f5', borderBottomWidth: 1, borderBottomColor: '#ddd', alignItems: 'center' }]}
           />
         ),
         headerStyle: {
@@ -31,14 +28,12 @@ export default function TabLayout() {
           borderBottomColor: '#999'
         },
         tabBarBackground: () => (
-          <BlurView
-            tint={getGlassTint(colorScheme === 'dark')}
-            intensity={GLASS_INTENSITY}
-            style={StyleSheet.absoluteFill}
+          <View
+            style={[StyleSheet.absoluteFill, { backgroundColor: '#f5f5f5' }]}
           />
         ),
         tabBarStyle: {
-          backgroundColor: 'transparent',
+          backgroundColor: '#f5f5f5',
           borderTopWidth: 1,
           position: 'absolute',
           elevation: 0,
