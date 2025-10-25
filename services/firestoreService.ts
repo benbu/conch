@@ -16,7 +16,7 @@ import {
     updateDoc,
     where
 } from 'firebase/firestore';
-import { getFirebaseDB } from '../lib/firebase';
+import { auth, getFirebaseDB } from '../lib/firebase';
 import { Conversation, Message, User } from '../types';
 import { mapConversation } from './mappers/conversationMapper';
 import { mapMessage } from './mappers/messageMapper';
@@ -446,6 +446,47 @@ export async function updateConversationName(
   } catch (error: any) {
     console.error('Error updating conversation name:', error);
     throw new Error(error.message || 'Failed to update conversation name');
+  }
+}
+
+/**
+ * Delete a conversation for all participants (admin/creator only)
+ * Calls HTTPS Cloud Function aiDeleteConversation (custom endpoint name: deleteConversation)
+ */
+export async function deleteConversation(conversationId: string): Promise<void> {
+  const FUNCTIONS_REGION = process.env.EXPO_PUBLIC_FUNCTIONS_REGION || 'us-central1';
+  const FIREBASE_PROJECT_ID = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID;
+  const DEFAULT_FUNCTIONS_BASE_URL = FIREBASE_PROJECT_ID
+    ? `https://${FUNCTIONS_REGION}-${FIREBASE_PROJECT_ID}.cloudfunctions.net`
+    : undefined;
+  const FUNCTIONS_BASE_URL = process.env.EXPO_PUBLIC_FUNCTIONS_URL || DEFAULT_FUNCTIONS_BASE_URL;
+
+  if (!FUNCTIONS_BASE_URL) {
+    throw new Error('Cloud Functions base URL is not configured');
+  }
+
+  const user = auth?.currentUser;
+  if (!user) throw new Error('Not authenticated');
+  const token = await user.getIdToken();
+
+  const url = `${FUNCTIONS_BASE_URL}/deleteConversation`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ conversationId }),
+  });
+
+  if (!res.ok) {
+    let message = `HTTP ${res.status}`;
+    try {
+      const json = await res.json();
+      message = json?.message || json?.error || message;
+    } catch {}
+    throw new Error(message);
   }
 }
 

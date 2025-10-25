@@ -10,6 +10,7 @@ import { extractActions } from './ai/extractActions';
 import { suggestResponses } from './ai/suggestResponses';
 import { summarizeThread } from './ai/summarizeThread';
 import { trackDecision } from './ai/trackDecision';
+import { deleteConversation } from './deleteConversation';
 import { authenticateRequest, verifyConversationAccess } from './middleware/auth';
 
 // Initialize Firebase Admin
@@ -17,6 +18,7 @@ admin.initializeApp();
 
 // Export triggers
 export { onMessageCreated } from './triggers/onMessageCreated';
+export { deleteConversation };
 
 /**
  * Thread Summary Function

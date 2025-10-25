@@ -85,7 +85,7 @@ service cloud.firestore {
                           isParticipant(resource.data))
                        );
       
-      // Delete: Not allowed (conversations should be archived, not deleted)
+      // Delete: Not allowed from client. Deletion is done server-side by Cloud Function
       allow delete: if false;
       
       // Messages subcollection

@@ -5,9 +5,9 @@
  * Firebase Cloud Messaging will handle push notifications.
  */
 
-import { collection, onSnapshot, orderBy, query, Timestamp, where } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, orderBy, query, Timestamp, where } from 'firebase/firestore';
 import { IN_APP_NOTIFICATIONS_ENABLED, LOCAL_NOTIFICATIONS_IN_EXPO_GO } from '../constants/featureFlags';
-import { auth, db } from '../lib/firebase';
+import { getFirebaseAuth, getFirebaseDB } from '../lib/firebase';
 import { NotificationGateway } from './notifications/NotificationGateway';
 import { hasProcessed, markProcessed, recordNotified, resetDeduper, shouldNotify } from './notifications/notificationDeduper';
 
@@ -15,6 +15,10 @@ let unsubscribeList: Array<() => void> = [];
 let startTime: Timestamp | null = null;
 let currentConversationId: string | null = null;
 const lastNotifiedMessageIdByConversation: Record<string, string> = {};
+
+// Use initialized Firestore/Auth instances (non-undefined)
+const db = getFirebaseDB();
+const auth = getFirebaseAuth();
 
 /**
  * Start listening for new messages across all conversations
@@ -46,9 +50,9 @@ export function startMessageNotificationListener() {
   // Listen to conversations to get list of conversation IDs
   const conversationsUnsub = onSnapshot(conversationsQuery, async (snapshot) => {
     // For each conversation, listen to new messages
-    snapshot.docs.forEach((doc) => {
-      const conversationId = doc.id;
-      const conversation = doc.data();
+    snapshot.docs.forEach((convSnap) => {
+      const conversationId = convSnap.id;
+      const conversation = convSnap.data();
       
       // Listen to messages in this conversation
       const messagesRef = collection(db, 'conversations', conversationId, 'messages');
@@ -101,11 +105,42 @@ export function startMessageNotificationListener() {
         }
 
         try {
-          const senderName = message.senderName || conversation.participants?.find(
+        // Try to get sender name from all available sources
+        let senderName = message.sender?.displayName;  // First try populated sender
+        
+        if (!senderName) {
+          senderName = message.senderName;  // Try legacy field
+        }
+        
+        if (!senderName) {
+          // Try conversation participants
+          senderName = conversation.participants?.find(
             (p: any) => p.id === message.senderId
-          )?.displayName || 'Someone';
+          )?.displayName;
+        }
+        
+        if (!senderName) {
+          // If still not found, make a one-time Firestore query (modular v9)
+          try {
+            const userRef = doc(db, 'users', message.senderId);
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+              senderName = (userSnap.data() as any)?.displayName;
+            }
+          } catch (error) {
+            console.error('Error fetching sender display name:', error);
+          }
+        }
 
-          const messageText = message.text || '📷 Image';
+        if (!senderName) {
+          // Log when we have to fall back to 'Someone'
+          console.warn(
+            `Failed to resolve sender name for message ${messageId} from sender ${message.senderId} in conversation ${conversationId}`
+          );
+          senderName = 'Someone';
+        }
+
+        const messageText = message.text || '📷 Image';
           const title = conversation.isGroup ? conversation.name || 'Group Chat' : senderName;
 
           await NotificationGateway.notify({

@@ -3,7 +3,7 @@ import OverlappingAvatars from '@/components/OverlappingAvatars';
 import PresenceIndicator from '@/components/PresenceIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
-import { searchUsers as searchUsersFirestore } from '@/services/firestoreService';
+import { deleteConversation as deleteConversationApi, searchUsers as searchUsersFirestore } from '@/services/firestoreService';
 import { SearchResult, searchUsers as searchUsersGlobal } from '@/services/searchService';
 import { useChatStore } from '@/stores/chatStore';
 import { Conversation, User } from '@/types';
@@ -13,12 +13,13 @@ import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -37,6 +38,8 @@ export default function ChatsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [remoteUsers, setRemoteUsers] = useState<User[]>([]);
+  const [activeActionForId, setActiveActionForId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Build recent direct message users from conversations
   const recentUsers: User[] = useMemo(() => {
@@ -134,12 +137,41 @@ export default function ChatsScreen() {
     // For direct chats, show presence of the other user
     const otherUser = item.type === 'direct' && others.length > 0 ? others[0] : null;
     const isGroup = item.type === 'group';
+    const canDelete = (item.createdBy === user?.id) || ((item.members || []).some((m: any) => m.userId === user?.id && m.role === 'admin'));
+
+    const handleConfirmDelete = (conversationId: string) => {
+      Alert.alert(
+        'Delete conversation?',
+        'This will delete the chat and all messages for all participants.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              setDeletingId(conversationId);
+              try {
+                await deleteConversationApi(conversationId);
+                setActiveActionForId(null);
+              } catch (e: any) {
+                Alert.alert('Failed to delete', e?.message || 'Please try again.');
+              } finally {
+                setDeletingId(null);
+              }
+            },
+          },
+        ]
+      );
+    };
 
     return (
       <TouchableOpacity
         testID={`conversation-item-${item.id}`}
         style={styles.conversationItem}
         onPress={() => router.push(`/chat/${item.id}`)}
+        onLongPress={() => {
+          if (canDelete) setActiveActionForId(item.id);
+        }}
       >
         {isGroup ? (
           <View style={styles.groupAvatarContainer}>
@@ -182,6 +214,21 @@ export default function ChatsScreen() {
           {item.unreadCount && item.unreadCount > 0 && (
             <View style={styles.unreadBadge}>
               <Text style={styles.unreadText}>{item.unreadCount}</Text>
+            </View>
+          )}
+
+          {activeActionForId === item.id && canDelete && (
+            <View style={styles.rowActions}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={() => handleConfirmDelete(item.id)}
+                disabled={deletingId === item.id}
+                style={[styles.deleteButton, deletingId === item.id && styles.deleteButtonDisabled]}
+              >
+                <Text style={styles.deleteButtonText}>
+                  {deletingId === item.id ? 'Deleting…' : 'Delete'}
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -305,6 +352,25 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  rowActions: {
+    marginTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  deleteButton: {
+    backgroundColor: '#ff3b30',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+  },
+  deleteButtonDisabled: {
+    opacity: 0.6,
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
   emptyState: {
     flex: 1,
