@@ -1,7 +1,7 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, GLASS_INTENSITY, getGlassBorder, getGlassTint } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { emitPresenceActivity } from '@/hooks/usePresenceHeartbeat';
+import { emitPresenceActivity } from '@/hooks/usePresenceActivity';
 import { BlurView } from 'expo-blur';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Modal, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';

@@ -13,7 +13,8 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseDB } from '../lib/firebase';
 import { User } from '../types';
-import { startPresenceTracking, stopPresenceTracking } from './presenceService';
+import { presenceClient } from './presenceClient';
+ 
 
 const auth = getFirebaseAuth();
 const db = getFirebaseDB();
@@ -84,10 +85,9 @@ export async function signInWithEmail(
       await setDoc(doc(db, 'users', user.id), user);
     }
 
-    // Start presence tracking after successful login
-    startPresenceTracking(user.id, user.appearOffline || false).catch((error) => {
-      console.error('Failed to start presence tracking:', error);
-    });
+    // Initialize presence client and enqueue activity (throttled online/lastSeen)
+    presenceClient.init(user.id);
+    presenceClient.enqueueActivity();
 
     return user;
   } catch (error: any) {
@@ -124,10 +124,9 @@ export async function signInWithGoogleIdToken(idToken: string): Promise<User> {
       await setDoc(doc(db, 'users', user.id), user);
     }
 
-    // Start presence tracking after successful login
-    startPresenceTracking(user.id, user.appearOffline || false).catch((error) => {
-      console.error('Failed to start presence tracking:', error);
-    });
+    // Initialize presence client and enqueue activity (throttled online/lastSeen)
+    presenceClient.init(user.id);
+    presenceClient.enqueueActivity();
 
     return user;
   } catch (error: any) {
@@ -152,13 +151,9 @@ export async function signInWithGoogle(): Promise<User> {
  */
 export async function signOutUser(): Promise<void> {
   try {
-    // Get current user ID before signing out
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      // Stop presence tracking before signing out
-      await stopPresenceTracking(currentUser.uid);
-    }
-    
+    // Best-effort immediate offline update and dispose presence client
+    await presenceClient.goOfflineNow();
+    presenceClient.dispose();
     await signOut(auth);
   } catch (error: any) {
     console.error('Error signing out:', error);

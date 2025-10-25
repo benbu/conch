@@ -1,3 +1,4 @@
+import { presenceClient } from '@/services/presenceClient';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,16 +14,11 @@ import { GLASS_INTENSITY, getGlassTint } from '@/constants/theme';
 import { AuthProvider, useAuthContext } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useNotifications } from '@/hooks/useNotifications';
-import { usePresenceHeartbeat } from '@/hooks/usePresenceHeartbeat';
 import {
-  startMessageNotificationListener,
-  stopMessageNotificationListener,
+    startMessageNotificationListener,
+    stopMessageNotificationListener,
 } from '@/services/messageNotificationService';
-import {
-  setUserOnline,
-  startPresenceTracking,
-  stopPresenceTracking
-} from '@/services/presenceService';
+ 
 import { selectAuthLoading, selectUser, useAuthStore } from '@/stores/authStore';
 import { selectCurrentConversationId, useChatStore } from '@/stores/chatStore';
 
@@ -37,7 +33,6 @@ function RootNavigator() {
   const { initialized } = useAuthContext();
   const segments = useSegments();
   const router = useRouter();
-  const awayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const processedNotificationIdsRef = useRef<Set<string>>(new Set());
   
@@ -108,19 +103,9 @@ function RootNavigator() {
     });
   }, [notification, activeConversationId]);
 
-  // Handle presence tracking and message notifications based on app lifecycle
+  // Handle message notifications and presence based on app lifecycle
   useEffect(() => {
     if (!user) return;
-
-    // Start presence tracking when user logs in
-    startPresenceTracking(user.id, user.appearOffline || false).catch((error) => {
-      console.error('Failed to start presence tracking:', error);
-    });
-
-    // Send a one-time heartbeat on login
-    if (!user.appearOffline) {
-      setUserOnline(user.id).catch(() => {});
-    }
 
     // Start listening for new messages (for in-app notifications in Expo Go)
     // In production builds with FCM, this provides a fallback
@@ -128,26 +113,27 @@ function RootNavigator() {
       startMessageNotificationListener();
     }
 
-    // Minimal app state change handler just to keep reference; presence handled in usePresenceHeartbeat
+    // Minimal app state change handler just to keep reference; presence disabled
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
       appState.current = nextAppState;
+      try {
+        if (nextAppState === 'active') {
+          presenceClient.enqueueActivity();
+        } else if (nextAppState.match(/inactive|background/)) {
+          await presenceClient.goOfflineNow();
+        }
+      } catch {}
     });
 
     // Cleanup on unmount or user logout
     return () => {
       subscription.remove();
-      if (awayTimerRef.current) {
-        clearTimeout(awayTimerRef.current);
-      }
-      stopPresenceTracking(user.id).catch(console.error);
       if (IN_APP_NOTIFICATIONS_ENABLED || LOCAL_NOTIFICATIONS_IN_EXPO_GO) {
         stopMessageNotificationListener();
       }
     };
   }, [user]);
 
-  // Centralized activity-gated heartbeat
-  usePresenceHeartbeat(user?.id, user?.appearOffline);
 
   // Handle notification navigation
   const handleNotificationPress = () => {
