@@ -1,18 +1,18 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Link, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 export default function SignupScreen() {
@@ -129,7 +129,7 @@ export default function SignupScreen() {
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account? </Text>
-              <Link href="/(auth)/login" asChild>
+              <Link href="/(auth)/login" replace asChild>
                 <TouchableOpacity>
                   <Text style={styles.link}>Sign In</Text>
                 </TouchableOpacity>
