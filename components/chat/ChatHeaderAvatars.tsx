@@ -1,9 +1,10 @@
 import Avatar from '@/components/Avatar';
+import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import OverlappingAvatars from '../OverlappingAvatars';
 import { AvatarWithPresence } from '../PresenceIndicator';
 
-export function ChatHeaderAvatars({
+function ChatHeaderAvatarsBase({
   type,
   participants,
   otherUser,
@@ -46,5 +47,7 @@ export function ChatHeaderAvatars({
   }
   return null;
 }
+
+export const ChatHeaderAvatars = React.memo(ChatHeaderAvatarsBase);
 
 

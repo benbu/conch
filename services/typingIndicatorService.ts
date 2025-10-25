@@ -3,11 +3,12 @@
  * Handles real-time typing indicators (RTDB-backed)
  */
 
+import { networkLog, withNetworkLog } from '@/lib/networkLogger';
 import { onDisconnect, onValue, ref, remove, serverTimestamp, set } from 'firebase/database';
-import { auth, getFirebaseRealtimeDB } from '../lib/firebase';
+import { getFirebaseAuth, getFirebaseRealtimeDB } from '../lib/firebase';
 
 const TYPING_TIMEOUT = 3000; // 3 seconds
-let typingTimer: NodeJS.Timeout | null = null;
+let typingTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Set user as typing in a conversation
@@ -17,25 +18,28 @@ export async function setTyping(
   isTyping: boolean
 ): Promise<void> {
   try {
-    const user = auth.currentUser;
+    const user = getFirebaseAuth().currentUser;
     if (!user) return;
 
     const rtdb = getFirebaseRealtimeDB();
     const typingRef = ref(rtdb, `typing/${conversationId}/${user.uid}`);
 
     if (isTyping) {
-      await set(typingRef, {
+      const payload = {
         userId: user.uid,
         displayName: user.displayName || 'Someone',
         timestamp: serverTimestamp(),
-      });
+      } as any;
+      await withNetworkLog('rtdb', 'set', typingRef.toString(), () => set(typingRef, payload), { payload });
       try {
+        networkLog('rtdb', 'onDisconnect.remove', typingRef.toString(), 'start');
         onDisconnect(typingRef).remove();
+        networkLog('rtdb', 'onDisconnect.remove', typingRef.toString(), 'success');
       } catch {
         // ignore
       }
     } else {
-      await remove(typingRef);
+      await withNetworkLog('rtdb', 'remove', typingRef.toString(), () => remove(typingRef));
     }
   } catch (error) {
     console.error('Error setting typing indicator:', error);
@@ -79,7 +83,7 @@ export function subscribeToTypingIndicators(
   conversationId: string,
   callback: (typingUsers: Array<{ userId: string; displayName: string }>) => void
 ): () => void {
-  const user = auth.currentUser;
+  const user = getFirebaseAuth().currentUser;
   if (!user) {
     return () => {};
   }
@@ -87,8 +91,9 @@ export function subscribeToTypingIndicators(
   const rtdb = getFirebaseRealtimeDB();
   const convRef = ref(rtdb, `typing/${conversationId}`);
 
+  networkLog('rtdb', 'onValue', convRef.toString(), 'subscribe');
   const off = onValue(convRef, (snapshot) => {
-    const value = snapshot.val() || {} as Record<string, { userId: string; displayName: string; timestamp?: number }>;
+    const value = (snapshot.val() || {}) as Record<string, { userId: string; displayName: string; timestamp?: number }>;
     const now = Date.now();
     const typingUsers = Object.entries(value)
       .filter(([uid]) => uid !== user.uid)
@@ -101,6 +106,9 @@ export function subscribeToTypingIndicators(
     callback(typingUsers);
   });
 
-  return () => off();
+  return () => {
+    networkLog('rtdb', 'onValue', convRef.toString(), 'unsubscribe');
+    off();
+  };
 }
 

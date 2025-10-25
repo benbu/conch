@@ -1,4 +1,5 @@
 import { getFirebaseRealtimeDB } from '@/lib/firebase';
+import { networkLog, withNetworkLog } from '@/lib/networkLogger';
 import { onDisconnect, onValue, ref, serverTimestamp, update } from 'firebase/database';
 
 type Unsub = () => void;
@@ -21,7 +22,9 @@ async function sendOnlineUpdate(now = Date.now()): Promise<void> {
   if (!presencePathRef) return;
   lastSentAt = now;
   pendingActivityAt = null;
-  await update(presencePathRef, { online: true, lastSeen: serverTimestamp() as unknown as number });
+  const path = presencePathRef.toString();
+  const payload = { online: true, lastSeen: serverTimestamp() as unknown as number } as any;
+  await withNetworkLog('rtdb', 'update', path, async () => update(presencePathRef!, payload), { payload });
 }
 
 export function init(userId: string): void {
@@ -42,7 +45,11 @@ export function init(userId: string): void {
   connectedUnsub = onValue(connectedRef, async (snap) => {
     try {
       if (snap.val() === true && presencePathRef) {
-        await onDisconnect(presencePathRef).update({ online: false, lastSeen: serverTimestamp() as unknown as number });
+        const path = presencePathRef.toString();
+        const payload = { online: false, lastSeen: serverTimestamp() as unknown as number } as any;
+        networkLog('rtdb', 'onDisconnect.update', path, 'start', { payload });
+        await onDisconnect(presencePathRef).update(payload);
+        networkLog('rtdb', 'onDisconnect.update', path, 'success', { payload });
       }
     } catch {
       // swallow
@@ -78,7 +85,9 @@ export async function goOfflineNow(): Promise<void> {
   pendingActivityAt = null;
   isOnlineLocal = false;
   try {
-    await update(presencePathRef, { online: false, lastSeen: serverTimestamp() as unknown as number });
+    const path = presencePathRef.toString();
+    const payload = { online: false, lastSeen: serverTimestamp() as unknown as number } as any;
+    await withNetworkLog('rtdb', 'update', path, async () => update(presencePathRef!, payload), { payload });
   } catch {
     // swallow
   }

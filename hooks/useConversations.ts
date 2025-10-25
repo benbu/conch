@@ -2,14 +2,13 @@
 import { useCallback, useEffect } from 'react';
 import { Image } from 'react-native';
 import {
-    addMemberToConversation,
-    createConversation,
-    getMessages,
-    getUsersByIds,
-    removeMemberFromConversation,
-    subscribeToConversations,
-    updateConversationName,
-    updateMemberRole,
+  addMemberToConversation,
+  createConversation,
+  getUsersByIds,
+  removeMemberFromConversation,
+  subscribeToConversations,
+  updateConversationName,
+  updateMemberRole,
 } from '../services/firestoreService';
 import { selectUser, useAuthStore } from '../stores/authStore';
 import { selectConversations, useChatStore } from '../stores/chatStore';
@@ -41,36 +40,15 @@ export function useConversations() {
           }
         }
 
-        // Compute display names based on recent message counts (exclude current user)
-        try {
-          const recent = await getMessages(conv.id, 200);
-          const counts: Record<string, number> = {};
-          for (const m of recent) {
-            if (m.senderId === user.id) continue;
-            counts[m.senderId] = (counts[m.senderId] || 0) + 1;
-          }
-
-          const otherUsers: User[] = participants.filter((p) => p.id !== user.id);
-          const ranked = [...otherUsers]
-            .sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0))
-            .slice(0, 5);
-
-          // Fallback to first up to 5 others if no messages yet
-          const selected = ranked.length > 0 ? ranked : otherUsers.slice(0, 5);
-          const full = selected.map((u) => u.displayName).join(',');
+        // Compute display names from participants only (no message reads)
+        const existing = useChatStore.getState().computedConversationNames[conv.id];
+        const otherUsers: User[] = participants.filter((p) => p.id !== user.id).slice(0, 5);
+        if (otherUsers.length > 0) {
+          const full = otherUsers.map((u) => u.displayName).join(',');
           const formatted = full.length <= 30
             ? full
-            : selected.map((u) => u.displayName.slice(0, 5)).join(',');
-
-          useChatStore.getState().setComputedConversationName(conv.id, formatted);
-        } catch (err) {
-          // On error, at least set a simple fallback if we have participants
-          const otherUsers: User[] = participants.filter((p) => p.id !== user.id).slice(0, 5);
-          if (otherUsers.length > 0) {
-            const full = otherUsers.map((u) => u.displayName).join(',');
-            const formatted = full.length <= 30
-              ? full
-              : otherUsers.map((u) => u.displayName.slice(0, 5)).join(',');
+            : otherUsers.map((u) => u.displayName.slice(0, 5)).join(',');
+          if (!existing || existing !== formatted) {
             useChatStore.getState().setComputedConversationName(conv.id, formatted);
           }
         }
