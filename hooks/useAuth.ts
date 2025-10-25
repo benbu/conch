@@ -1,3 +1,5 @@
+console.reportErrorsAsExceptions = false; // eslint-disable-line no-use-before-define
+
 // Custom authentication hook
 import { useCallback } from 'react';
 import {

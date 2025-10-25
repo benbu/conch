@@ -22,6 +22,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
 import { useMessages } from '@/hooks/useMessages';
 import { useUserPresence } from '@/hooks/usePresence';
+import { emitPresenceActivity } from '@/hooks/usePresenceActivity';
 import { useTranslations } from '@/hooks/useTranslations';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useViewableReadReceipts } from '@/hooks/useViewableReadReceipts';
@@ -75,6 +76,8 @@ export default function ChatScreen() {
   const [didScrollToUnread, setDidScrollToUnread] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [expandedTranslations, setExpandedTranslations] = useState<Record<string, boolean>>({});
+  const [previousMessageCount, setPreviousMessageCount] = useState(0);
+  const [isNearBottom, setIsNearBottom] = useState(true);
   
   const flatListRef = React.useRef<FlatList>(null);
   const router = useRouter();
@@ -141,6 +144,7 @@ export default function ChatScreen() {
     // Set current conversation in both chat store and notification service
     useChatStore.getState().setCurrentConversation(conversationId);
     setCurrentConversation(conversationId);
+    emitPresenceActivity();
     
     return () => {
       useChatStore.getState().setCurrentConversation(null);
@@ -217,8 +221,14 @@ export default function ChatScreen() {
     if (!messageText.trim()) return;
 
     try {
+      emitPresenceActivity();
       await sendMessage(messageText.trim());
       setMessageText('');
+      
+      // Scroll to bottom after sending message
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     } catch (error) {
       console.error('Failed to send message:', error);
       // Don't show error - message is queued
@@ -247,6 +257,11 @@ export default function ChatScreen() {
       }]);
 
       setUploading(false);
+      
+      // Scroll to bottom after sending image
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     } catch (error: any) {
       setUploading(false);
       Alert.alert('Upload Failed', error.message);
@@ -344,6 +359,13 @@ export default function ChatScreen() {
   const topLoadThrottleRef = React.useRef(0);
   const onScroll = ({ nativeEvent }: any) => {
     const y = nativeEvent?.contentOffset?.y ?? 0;
+    const contentHeight = nativeEvent?.contentSize?.height ?? 0;
+    const layoutHeight = nativeEvent?.layoutMeasurement?.height ?? 0;
+    
+    // Check if user is near the bottom (within 100px)
+    const distanceFromBottom = contentHeight - y - layoutHeight;
+    setIsNearBottom(distanceFromBottom < 100);
+    
     if (y <= 32) {
       const now = Date.now();
       if (now - topLoadThrottleRef.current < 500) return;
@@ -364,6 +386,29 @@ export default function ChatScreen() {
       hideSub.remove();
     };
   }, []);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (messages.length === 0) return;
+    
+    // Check if we have new messages (not from pagination)
+    const hasNewMessages = messages.length > previousMessageCount;
+    
+    // Update the previous count
+    setPreviousMessageCount(messages.length);
+    
+    // Only auto-scroll if:
+    // 1. We have new messages (not from pagination)
+    // 2. We're not currently loading more messages
+    // 3. We've already completed the initial scroll to unread (if any)
+    // 4. User is near the bottom (so we don't interrupt their reading)
+    if (hasNewMessages && !loadingMore && didScrollToUnread && isNearBottom) {
+      // Small delay to ensure the message has been rendered
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages.length, loadingMore, didScrollToUnread, previousMessageCount, isNearBottom]);
 
   
 

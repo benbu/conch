@@ -1,4 +1,5 @@
 // Firestore service for conversations and messages
+import { networkLog, withNetworkLog } from '@/lib/networkLogger';
 import {
     addDoc,
     arrayRemove,
@@ -56,7 +57,7 @@ export async function createConversation(
       lastMessageAt: serverTimestamp(),
     };
 
-    const docRef = await addDoc(collection(db, 'conversations'), conversationData);
+    const docRef = await withNetworkLog('firestore', 'addDoc', '/conversations', () => addDoc(collection(db, 'conversations'), conversationData));
     return docRef.id;
   } catch (error: any) {
     console.error('Error creating conversation:', error);
@@ -75,7 +76,7 @@ export async function getUserConversations(userId: string): Promise<Conversation
       orderBy('lastMessageAt', 'desc')
     );
 
-    const snapshot = await getDocs(q);
+    const snapshot = await withNetworkLog('firestore', 'getDocs', '/conversations(query by participantIds)', () => getDocs(q));
     
     return snapshot.docs.map((doc) => mapConversation(doc));
   } catch (error: any) {
@@ -97,6 +98,7 @@ export function subscribeToConversations(
     orderBy('lastMessageAt', 'desc')
   );
 
+  networkLog('firestore', 'onSnapshot', '/conversations(query by participantIds)', 'subscribe');
   return onSnapshot(q, (snapshot) => {
     const conversations = snapshot.docs.map((doc) => mapConversation(doc));
     callback(conversations);
@@ -124,20 +126,22 @@ export async function sendMessage(
       createdAt: serverTimestamp(),
     };
 
-    const docRef = await addDoc(
-      collection(db, 'conversations', conversationId, 'messages'),
-      messageData
+    const docRef = await withNetworkLog('firestore', 'addDoc', `/conversations/${conversationId}/messages`, () =>
+      addDoc(
+        collection(db, 'conversations', conversationId, 'messages'),
+        messageData
+      )
     );
 
     // Update conversation's lastMessageAt and lastMessage
-    await updateDoc(doc(db, 'conversations', conversationId), {
+    await withNetworkLog('firestore', 'updateDoc', `/conversations/${conversationId}`, () => updateDoc(doc(db, 'conversations', conversationId), {
       lastMessageAt: serverTimestamp(),
       lastMessage: {
         text,
         senderId,
         createdAt: serverTimestamp(),
       },
-    });
+    }));
 
     return docRef.id;
   } catch (error: any) {
@@ -160,7 +164,7 @@ export async function getMessages(
       limit(limitCount)
     );
 
-    const snapshot = await getDocs(q);
+    const snapshot = await withNetworkLog('firestore', 'getDocs', `/conversations/${conversationId}/messages(limit=${limitCount})`, () => getDocs(q));
     
     return snapshot.docs
       .map((doc) => mapMessage(doc, conversationId))
@@ -187,7 +191,7 @@ export async function getMessagesBefore(
       limit(limitCount)
     );
 
-    const snapshot = await getDocs(q);
+    const snapshot = await withNetworkLog('firestore', 'getDocs', `/conversations/${conversationId}/messages(before=${beforeDate.toISOString()},limit=${limitCount})`, () => getDocs(q));
     
     return snapshot.docs
       .map((doc) => mapMessage(doc, conversationId))
@@ -210,6 +214,7 @@ export function subscribeToMessages(
     orderBy('createdAt', 'asc')
   );
 
+  networkLog('firestore', 'onSnapshot', `/conversations/${conversationId}/messages`, 'subscribe');
   return onSnapshot(q, (snapshot) => {
     const messages = snapshot.docs.map((doc) => mapMessage(doc, conversationId));
     callback(messages);
@@ -247,6 +252,7 @@ export function subscribeToMessageTranslation(
     'translations',
     lang.toLowerCase()
   );
+  networkLog('firestore', 'onSnapshot', `/conversations/${conversationId}/messages/${messageId}/translations/${lang.toLowerCase()}`, 'subscribe');
   return onSnapshot(d, (snap) => {
     if (!snap.exists()) {
       callback(null);
@@ -283,7 +289,7 @@ export async function getTranslationErrorsForUser(
     collection(db, 'conversations'),
     where('participantIds', 'array-contains', userId)
   );
-  const convSnap = await getDocs(convQ);
+  const convSnap = await withNetworkLog('firestore', 'getDocs', `/conversations(participantIds contains ${userId})`, () => getDocs(convQ));
   const convIds = new Set(convSnap.docs.map((d) => d.id));
 
   // Query translations collection group for errors
@@ -293,7 +299,7 @@ export async function getTranslationErrorsForUser(
     orderBy('updatedAt', 'desc'),
     limit(limitCount)
   );
-  const tSnap = await getDocs(tQ);
+  const tSnap = await withNetworkLog('firestore', 'getDocs', `/conversations/*/messages/*/translations(status==error,limit=${limitCount})`, () => getDocs(tQ));
 
   const out: {
     conversationId: string;

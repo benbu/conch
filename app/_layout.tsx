@@ -15,8 +15,8 @@ import { AuthProvider, useAuthContext } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useNotifications } from '@/hooks/useNotifications';
 import {
-    startMessageNotificationListener,
-    stopMessageNotificationListener,
+  startMessageNotificationListener,
+  stopMessageNotificationListener,
 } from '@/services/messageNotificationService';
  
 import { selectAuthLoading, selectUser, useAuthStore } from '@/stores/authStore';
@@ -107,6 +107,12 @@ function RootNavigator() {
   useEffect(() => {
     if (!user) return;
 
+    // Ensure presence client is initialized when user is available
+    try {
+      presenceClient.init(user.id);
+      presenceClient.enqueueActivity();
+    } catch {}
+
     // Start listening for new messages (for in-app notifications in Expo Go)
     // In production builds with FCM, this provides a fallback
     if (IN_APP_NOTIFICATIONS_ENABLED || LOCAL_NOTIFICATIONS_IN_EXPO_GO) {
@@ -131,6 +137,7 @@ function RootNavigator() {
       if (IN_APP_NOTIFICATIONS_ENABLED || LOCAL_NOTIFICATIONS_IN_EXPO_GO) {
         stopMessageNotificationListener();
       }
+      try { presenceClient.dispose(); } catch {}
     };
   }, [user]);
 

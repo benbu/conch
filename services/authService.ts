@@ -1,4 +1,5 @@
 // Authentication service with Firebase
+import { withNetworkLog } from '@/lib/networkLogger';
 import {
     createUserWithEmailAndPassword,
     User as FirebaseUser,
@@ -29,11 +30,13 @@ export async function signUpWithEmail(
 ): Promise<User> {
   try {
     // Create auth user
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await withNetworkLog('auth', 'createUserWithEmailAndPassword', 'auth', () =>
+      createUserWithEmailAndPassword(auth, email, password)
+    );
     const firebaseUser = userCredential.user;
 
     // Update profile
-    await updateProfile(firebaseUser, { displayName });
+    await withNetworkLog('auth', 'updateProfile', 'auth', () => updateProfile(firebaseUser, { displayName }));
 
     // Create user document in Firestore
     const user: User = {
@@ -46,7 +49,7 @@ export async function signUpWithEmail(
       updatedAt: new Date(),
     };
 
-    await setDoc(doc(db, 'users', user.id), user);
+    await withNetworkLog('firestore', 'setDoc', `/users/${user.id}`, () => setDoc(doc(db, 'users', user.id), user));
 
     return user;
   } catch (error: any) {
@@ -63,7 +66,9 @@ export async function signInWithEmail(
   password: string
 ): Promise<User> {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await withNetworkLog('auth', 'signInWithEmailAndPassword', 'auth', () =>
+      signInWithEmailAndPassword(auth, email, password)
+    );
     const firebaseUser = userCredential.user;
 
     // Fetch user document from Firestore
@@ -82,7 +87,7 @@ export async function signInWithEmail(
         updatedAt: new Date(),
       };
       
-      await setDoc(doc(db, 'users', user.id), user);
+      await withNetworkLog('firestore', 'setDoc', `/users/${user.id}`, () => setDoc(doc(db, 'users', user.id), user));
     }
 
     // Initialize presence client and enqueue activity (throttled online/lastSeen)
@@ -103,7 +108,9 @@ export async function signInWithEmail(
 export async function signInWithGoogleIdToken(idToken: string): Promise<User> {
   try {
     const credential = GoogleAuthProvider.credential(idToken);
-    const userCredential = await signInWithCredential(auth, credential);
+    const userCredential = await withNetworkLog('auth', 'signInWithCredential', 'auth', () =>
+      signInWithCredential(auth, credential)
+    );
     const firebaseUser = userCredential.user;
 
     // Check if user document exists
@@ -121,7 +128,7 @@ export async function signInWithGoogleIdToken(idToken: string): Promise<User> {
         updatedAt: new Date(),
       };
 
-      await setDoc(doc(db, 'users', user.id), user);
+      await withNetworkLog('firestore', 'setDoc', `/users/${user.id}`, () => setDoc(doc(db, 'users', user.id), user));
     }
 
     // Initialize presence client and enqueue activity (throttled online/lastSeen)
@@ -154,7 +161,7 @@ export async function signOutUser(): Promise<void> {
     // Best-effort immediate offline update and dispose presence client
     await presenceClient.goOfflineNow();
     presenceClient.dispose();
-    await signOut(auth);
+  await withNetworkLog('auth', 'signOut', 'auth', () => signOut(auth));
   } catch (error: any) {
     console.error('Error signing out:', error);
     throw new Error(error.message || 'Failed to sign out');
@@ -166,7 +173,7 @@ export async function signOutUser(): Promise<void> {
  */
 export async function sendPasswordReset(email: string): Promise<void> {
   try {
-    await sendPasswordResetEmail(auth, email);
+  await withNetworkLog('auth', 'sendPasswordResetEmail', 'auth', () => sendPasswordResetEmail(auth, email));
   } catch (error: any) {
     console.error('Error sending password reset:', error);
     throw new Error(error.message || 'Failed to send password reset email');
@@ -178,7 +185,7 @@ export async function sendPasswordReset(email: string): Promise<void> {
  */
 export async function getUserById(userId: string): Promise<User | null> {
   try {
-    const userDoc = await getDoc(doc(db, 'users', userId));
+    const userDoc = await withNetworkLog('firestore', 'getDoc', `/users/${userId}`, () => getDoc(doc(db, 'users', userId)));
     
     if (!userDoc.exists()) {
       return null;
@@ -209,13 +216,15 @@ export async function updateUserProfile(
   updates: Partial<Omit<User, 'id' | 'email' | 'createdAt'>>
 ): Promise<void> {
   try {
-    await setDoc(
-      doc(db, 'users', userId),
-      {
-        ...updates,
-        updatedAt: new Date(),
-      },
-      { merge: true }
+    await withNetworkLog('firestore', 'setDoc', `/users/${userId}`, () =>
+      setDoc(
+        doc(db, 'users', userId),
+        {
+          ...updates,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      )
     );
   } catch (error: any) {
     console.error('Error updating user profile:', error);
