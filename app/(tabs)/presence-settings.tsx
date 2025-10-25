@@ -1,12 +1,11 @@
 import PresenceIndicator from '@/components/PresenceIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { useUpdatePresence } from '@/hooks/usePresence';
-import { startPresenceTracking } from '@/services/presenceService';
 import { selectCustomStatus, useAuthStore } from '@/stores/authStore';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -32,7 +31,7 @@ const STATUS_PRESETS = [
 ];
 
 export default function PresenceSettingsScreen() {
-  const { user, updateProfile } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const { setAppearOffline, updateCustomStatus, updating } = useUpdatePresence();
   const customStatus = useAuthStore(selectCustomStatus);
@@ -42,58 +41,16 @@ export default function PresenceSettingsScreen() {
   const [statusInput, setStatusInput] = useState(customStatus || '');
   const [savingAppearOffline, setSavingAppearOffline] = useState(false);
 
-  const handleToggleAppearOffline = async (value: boolean) => {
-    if (!user) return;
-
-    try {
-      setSavingAppearOffline(true);
-      setAppearOfflineState(value);
-
-      // Update Firestore user document
-      await setAppearOffline(user.id, value);
-
-      // Update local state
-      await updateProfile({ appearOffline: value });
-
-      // Restart presence tracking with new setting
-      await startPresenceTracking(user.id, value);
-
-      Alert.alert(
-        'Success',
-        value ? 'You now appear offline to others' : 'Your online status is now visible'
-      );
-    } catch (error: any) {
-      setAppearOfflineState(!value);
-      Alert.alert('Error', error.message || 'Failed to update appear offline setting');
-    } finally {
-      setSavingAppearOffline(false);
-    }
+  const handleToggleAppearOffline = async (_value: boolean) => {
+    Alert.alert('Presence disabled', 'Presence networking is disabled in this build.');
   };
 
   const handleSaveCustomStatus = async () => {
-    if (!user) return;
-
-    try {
-      const trimmedStatus = statusInput.trim();
-      await updateCustomStatus(user.id, trimmedStatus || undefined);
-      setCustomStatusStore(trimmedStatus || undefined);
-      Alert.alert('Success', 'Custom status updated');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update custom status');
-    }
+    Alert.alert('Presence disabled', 'Presence networking is disabled in this build.');
   };
 
   const handleClearStatus = async () => {
-    if (!user) return;
-
-    try {
-      setStatusInput('');
-      await updateCustomStatus(user.id, undefined);
-      setCustomStatusStore(undefined);
-      Alert.alert('Success', 'Custom status cleared');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to clear custom status');
-    }
+    Alert.alert('Presence disabled', 'Presence networking is disabled in this build.');
   };
 
   const handlePresetSelect = (preset: string) => {
@@ -135,7 +92,7 @@ export default function PresenceSettingsScreen() {
         </View>
       </View>
 
-      {/* Appear Offline Toggle */}
+      {/* Appear Offline Toggle (disabled) */}
       <View style={styles.section}>
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
@@ -152,9 +109,11 @@ export default function PresenceSettingsScreen() {
               onValueChange={handleToggleAppearOffline}
               trackColor={{ false: '#ccc', true: '#34C759' }}
               thumbColor="#fff"
+              disabled
             />
           )}
         </View>
+        <Text style={{ marginTop: 8, color: '#666' }}>Presence networking disabled; settings inactive.</Text>
       </View>
 
       {/* Custom Status */}
@@ -171,6 +130,7 @@ export default function PresenceSettingsScreen() {
           onChangeText={setStatusInput}
           maxLength={100}
           multiline
+          editable={false}
         />
 
         <Text style={styles.characterCount}>{statusInput.length}/100</Text>
@@ -179,7 +139,7 @@ export default function PresenceSettingsScreen() {
           <TouchableOpacity
             style={[styles.button, styles.buttonSecondary]}
             onPress={handleClearStatus}
-            disabled={updating}
+            disabled
           >
             <Text style={styles.buttonSecondaryText}>Clear</Text>
           </TouchableOpacity>
@@ -187,7 +147,7 @@ export default function PresenceSettingsScreen() {
           <TouchableOpacity
             style={[styles.button, styles.buttonPrimary]}
             onPress={handleSaveCustomStatus}
-            disabled={updating}
+            disabled
           >
             {updating ? (
               <ActivityIndicator color="#fff" />
