@@ -1,5 +1,6 @@
 // Custom hook for conversations
 import { useCallback, useEffect } from 'react';
+import { Image } from 'react-native';
 import {
     addMemberToConversation,
     createConversation,
@@ -32,6 +33,13 @@ export function useConversations() {
       for (const conv of conversations) {
         const participants = await getUsersByIds(conv.participantIds);
         useChatStore.getState().setConversationParticipants(conv.id, participants);
+
+        // Prefetch avatar images to warm the cache for instant display
+        for (const u of participants) {
+          if (u.photoURL) {
+            Image.prefetch(u.photoURL).catch(() => {});
+          }
+        }
 
         // Compute display names based on recent message counts (exclude current user)
         try {
