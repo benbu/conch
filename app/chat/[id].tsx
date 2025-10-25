@@ -12,7 +12,6 @@ import { ChatHeaderAvatars } from '@/components/chat/ChatHeaderAvatars';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { InputBar as InputBarComp } from '@/components/chat/InputBar';
 import { MessageList as MessageListComp } from '@/components/chat/MessageList';
-import { GLASS_INTENSITY, getGlassTint } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAIActions } from '@/hooks/useAIActions';
 import { useAIDecisions } from '@/hooks/useAIDecisions';
@@ -33,11 +32,9 @@ import { useChatStore } from '@/stores/chatStore';
 import { Message, User } from '@/types';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { format } from 'date-fns';
-import { BlurView } from 'expo-blur';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Keyboard,
@@ -78,6 +75,7 @@ export default function ChatScreen() {
   const [expandedTranslations, setExpandedTranslations] = useState<Record<string, boolean>>({});
   const [previousMessageCount, setPreviousMessageCount] = useState(0);
   const [isNearBottom, setIsNearBottom] = useState(true);
+  const [userHasScrolled, setUserHasScrolled] = useState(false);
   
   const flatListRef = React.useRef<FlatList>(null);
   const router = useRouter();
@@ -149,6 +147,7 @@ export default function ChatScreen() {
     return () => {
       useChatStore.getState().setCurrentConversation(null);
       setCurrentConversation(null);
+      setUserHasScrolled(false); // Reset for new conversation
     };
   }, [conversationId]);
 
@@ -203,12 +202,21 @@ export default function ChatScreen() {
         if (loaded === 0) break;
       }
 
-      // No unread found; scroll to bottom (latest)
+      // No unread found; scroll to bottom (latest) with multiple attempts
+      const scrollToBottom = () => {
+        if (cancelled || userHasScrolled) return;
+        flatListRef.current?.scrollToEnd?.({ animated: false });
+      };
+
+      // Multiple scroll attempts to handle content loading
+      scrollToBottom(); // Immediate
+      setTimeout(scrollToBottom, 100); // Quick follow-up
+      setTimeout(scrollToBottom, 250); // Standard timing
       setTimeout(() => {
-        if (cancelled) return;
+        if (cancelled || userHasScrolled) return;
         flatListRef.current?.scrollToEnd?.({ animated: false });
         setDidScrollToUnread(true);
-      }, 250);
+      }, 500); // Final attempt with state update
     };
 
     tryScroll();
@@ -358,6 +366,11 @@ export default function ChatScreen() {
   // Throttled top-of-list pagination
   const topLoadThrottleRef = React.useRef(0);
   const onScroll = ({ nativeEvent }: any) => {
+    // Detect if user manually scrolled (any scroll after initial load)
+    if (didScrollToUnread && !userHasScrolled) {
+      setUserHasScrolled(true);
+    }
+    
     const y = nativeEvent?.contentOffset?.y ?? 0;
     const contentHeight = nativeEvent?.contentSize?.height ?? 0;
     const layoutHeight = nativeEvent?.layoutMeasurement?.height ?? 0;
@@ -539,13 +552,6 @@ export default function ChatScreen() {
     );
   }
 
-  if (loading && messages.length === 0) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
 
   // Custom header: avatar(s) + title, left-aligned
   const HeaderTitle = () => (
@@ -573,10 +579,8 @@ export default function ChatScreen() {
           contentStyle: { backgroundColor: 'white' },
           headerTitleAlign: 'center',
           headerBackground: () => (
-            <BlurView
-              tint={getGlassTint(colorScheme === 'dark')}
-              intensity={GLASS_INTENSITY}
-              style={[StyleSheet.absoluteFill, { borderBottomWidth: 1, borderBottomColor: '#ddd' }]}
+            <View
+              style={[StyleSheet.absoluteFill, { backgroundColor: '#f5f5f5', borderBottomWidth: 1, borderBottomColor: '#ddd' }]}
             />
           ),
           headerTitle: () => <HeaderTitle />,
@@ -589,8 +593,6 @@ export default function ChatScreen() {
         behavior={Platform.OS === 'ios' ? (keyboardVisible ? 'padding' : undefined) : (keyboardVisible ? 'height' : undefined)}
         /* keyboardVerticalOffset={Platform.OS === 'ios' ? (keyboardVisible ? 0 : 0) : 0} */
       >
-        {/* Push content below transparent header */}
-        <View style={{ height: headerHeight }} />
         <MessageListComp
           flatListRef={flatListRef}
           messages={messages}
@@ -607,6 +609,10 @@ export default function ChatScreen() {
         {typingText ? (
           <View style={{ paddingHorizontal: 16, paddingVertical: 6 }}>
             <TypingIndicator text={typingText} />
+          </View>
+        ) : (loading && messages.length === 0) ? (
+          <View style={{ paddingHorizontal: 16, paddingVertical: 6 }}>
+            <TypingIndicator text="Checking new messages..." />
           </View>
         ) : null}
         <View

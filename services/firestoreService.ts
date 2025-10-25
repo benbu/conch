@@ -232,6 +232,10 @@ export type TranslationDoc = {
   culturalContextHints?: string[];
   slangExplanations?: { phrase: string; explanation: string }[];
   error?: string;
+  // Denormalized fields (optional; present for new docs)
+  conversationId?: string;
+  messageId?: string;
+  lang?: string;
 };
 
 /**
@@ -270,6 +274,108 @@ export function subscribeToMessageTranslation(
       });
     }
   });
+}
+
+/**
+ * One-time fetch of a message translation for a specific language
+ */
+export async function getMessageTranslation(
+  conversationId: string,
+  messageId: string,
+  lang: string
+): Promise<TranslationDoc | null> {
+  const d = doc(
+    db,
+    'conversations',
+    conversationId,
+    'messages',
+    messageId,
+    'translations',
+    lang.toLowerCase()
+  );
+  const snap = await withNetworkLog(
+    'firestore',
+    'getDoc',
+    `/conversations/${conversationId}/messages/${messageId}/translations/${lang.toLowerCase()}`,
+    () => getDoc(d)
+  );
+
+  if (!snap.exists()) return null;
+  const data = snap.data() as any;
+  return {
+    status: data.status,
+    translation: data.translation,
+    noTranslationNeeded: data.noTranslationNeeded,
+    detectedSourceLang: data.detectedSourceLang,
+    confidence: data.confidence,
+    culturalContextHints: data.culturalContextHints,
+    slangExplanations: data.slangExplanations,
+    error: data.error,
+    conversationId: data.conversationId,
+    messageId: data.messageId,
+    lang: data.lang,
+  };
+}
+
+/**
+ * Batch fetch translations via collectionGroup and IN chunks of messageIds
+ */
+export async function fetchMessageTranslationsBatch(
+  conversationId: string,
+  messageIds: string[],
+  lang: string
+): Promise<Record<string, TranslationDoc | null>> {
+  const result: Record<string, TranslationDoc | null> = {};
+  if (!messageIds.length) return result;
+
+  const MAX_IN = 10; // Firestore 'in' clause max
+  const chunks: string[][] = [];
+  for (let i = 0; i < messageIds.length; i += MAX_IN) {
+    chunks.push(messageIds.slice(i, i + MAX_IN));
+  }
+
+  // Query chunks sequentially to avoid index fan-out; could be parallel if needed
+  for (const chunk of chunks) {
+    const q = query(
+      collectionGroup(db, 'translations'),
+      where('conversationId', '==', conversationId),
+      where('lang', '==', lang.toLowerCase()),
+      where('messageId', 'in', chunk)
+    );
+    const snap = await withNetworkLog(
+      'firestore',
+      'getDocs',
+      `/conversations/*/messages/*/translations(batch:${chunk.length})`,
+      () => getDocs(q)
+    );
+    for (const d of snap.docs) {
+      const data = d.data() as any;
+      const mid = data.messageId as string | undefined;
+      if (!mid) continue;
+      result[mid] = {
+        status: data.status,
+        translation: data.translation,
+        noTranslationNeeded: data.noTranslationNeeded,
+        detectedSourceLang: data.detectedSourceLang,
+        confidence: data.confidence,
+        culturalContextHints: data.culturalContextHints,
+        slangExplanations: data.slangExplanations,
+        error: data.error,
+        conversationId: data.conversationId,
+        messageId: data.messageId,
+        lang: data.lang,
+      };
+    }
+  }
+
+  // Fill missing ids with null (older docs or no translation)
+  for (const id of messageIds) {
+    if (!Object.prototype.hasOwnProperty.call(result, id)) {
+      result[id] = null;
+    }
+  }
+
+  return result;
 }
 
 /**

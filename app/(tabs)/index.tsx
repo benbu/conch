@@ -259,6 +259,7 @@ export default function ChatsScreen() {
           data={conversations}
           renderItem={renderConversation}
           keyExtractor={(item) => item.id}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
           //contentContainerStyle={[styles.listContent, { paddingTop: insets.top + 12, paddingBottom: tabBarHeight + 16 }]}
         />
       )}
@@ -388,5 +389,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#666',
     textAlign: 'center',
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#E5E5E5',
+    marginLeft: 62, // 50px avatar + 12px marginRight
   },
 });

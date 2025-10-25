@@ -103,6 +103,11 @@ export const onMessageCreated = onDocumentCreated(
                 createdAt: new Date(),
                 model: process.env.TRANSLATION_MODEL || 'gpt-4o-mini',
                 provider: 'openai',
+              // Denormalized fields for efficient collectionGroup querying
+              conversationId,
+              messageId,
+              lang: (targetLang || '').toLowerCase(),
+              messageCreatedAt: message?.createdAt || new Date(),
               },
               { merge: true }
             );
