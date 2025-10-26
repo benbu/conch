@@ -1,15 +1,15 @@
 // Authentication service with Firebase
 import { withNetworkLog } from '@/lib/networkLogger';
 import {
-    createUserWithEmailAndPassword,
-    User as FirebaseUser,
-    GoogleAuthProvider,
-    onAuthStateChanged,
-    sendPasswordResetEmail,
-    signInWithCredential,
-    signInWithEmailAndPassword,
-    signOut,
-    updateProfile
+  createUserWithEmailAndPassword,
+  User as FirebaseUser,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseDB } from '../lib/firebase';
