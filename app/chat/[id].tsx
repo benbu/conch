@@ -388,17 +388,35 @@ export default function ChatScreen() {
     }
   };
 
-  // Track keyboard visibility to adjust bottom spacer
+  // Track keyboard visibility to adjust bottom spacer and scroll if needed
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvent as any, () => setKeyboardVisible(true));
-    const hideSub = Keyboard.addListener(hideEvent as any, () => setKeyboardVisible(false));
+    
+    const showSub = Keyboard.addListener(showEvent as any, () => {
+      setKeyboardVisible(true);
+      
+      // If user is near the bottom, scroll to keep recent messages visible
+      if (isNearBottom) {
+        // Multiple attempts to handle keyboard animation timing
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 200);
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: false });
+        }, 500);
+      }
+    });
+    
+    const hideSub = Keyboard.addListener(hideEvent as any, () => {
+      setKeyboardVisible(false);
+    });
+    
     return () => {
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [isNearBottom]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
