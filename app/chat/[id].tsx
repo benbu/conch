@@ -40,6 +40,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -573,15 +574,18 @@ export default function ChatScreen() {
 
   // Custom header: avatar(s) + title, left-aligned
   const HeaderTitle = () => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 0 }}>
-      <ChatHeaderAvatars
-        type={conversation?.type}
-        participants={participants}
-        otherUser={otherUser}
-        conversationTitle={conversation?.name || conversation?.title}
-        onPressGroup={() => setShowMemberManagement(true)}
-      />
+      <Pressable onPress={() => {console.log('clickedMe'); setShowMemberManagement(true)}}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 0 }} >
+        <ChatHeaderAvatars
+          type={conversation?.type}
+          participants={participants}
+          otherUser={otherUser}
+          conversationTitle={conversation?.name || conversation?.title}
+          onPressGroup={() => {console.log('clickedGroup'); setShowMemberManagement(true)}}
+          onPressTitle={() => {console.log('clickedTitle'); setShowMemberManagement(true)}}
+        />
     </View>
+      </Pressable>
   );
 
   // Floating title bar removed; title now lives inside header avatars
@@ -599,9 +603,19 @@ export default function ChatScreen() {
           headerBackground: () => (
             <View
               style={[StyleSheet.absoluteFill, { backgroundColor: '#f5f5f5', borderBottomWidth: 1, borderBottomColor: '#ddd' }]}
+              pointerEvents="box-none"
             />
           ),
-          headerTitle: () => <HeaderTitle />,
+          headerTitle: () => (
+            <Pressable
+              onPress={() => { console.log('clickedTop'); if (conversation?.type === 'group') setShowMemberManagement(true); }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+              collapsable={false}
+            >
+              <HeaderTitle />
+            </Pressable>
+          ),
           // AI menu trigger moved into InputBar
         }}
       />
@@ -609,7 +623,6 @@ export default function ChatScreen() {
         style={styles.container}
         enabled={Platform.OS === 'ios' ? true : keyboardVisible}
         behavior={Platform.OS === 'ios' ? (keyboardVisible ? 'padding' : undefined) : (keyboardVisible ? 'height' : undefined)}
-        /* keyboardVerticalOffset={Platform.OS === 'ios' ? (keyboardVisible ? 0 : 0) : 0} */
       >
         <MessageListComp
           flatListRef={flatListRef}

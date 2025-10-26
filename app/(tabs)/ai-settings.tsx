@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useHeaderHeight } from '@react-navigation/elements';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
     Alert,
@@ -47,16 +47,21 @@ export default function AISettingsScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const { user, updateProfile } = useAuth();
+  const router = useRouter();
   const [settings, setSettings] = useState<AISettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(false);
   const [autoTranslate, setAutoTranslate] = useState<boolean>(!!user?.autoTranslate);
   const [defaultLanguage, setDefaultLanguage] = useState<string>((user as any)?.defaultLanguage || 'en');
+  const [preferredAIModel, setPreferredAIModel] = useState<string>((user as any)?.preferredAIModel || 'gpt-4o-mini');
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [langQuery, setLangQuery] = useState('');
+  const [modelModalVisible, setModelModalVisible] = useState(false);
+  const [modelQuery, setModelQuery] = useState('');
   useEffect(() => {
     setAutoTranslate(!!user?.autoTranslate);
     setDefaultLanguage((user as any)?.defaultLanguage || 'en');
-  }, [user?.autoTranslate, (user as any)?.defaultLanguage]);
+    setPreferredAIModel((user as any)?.preferredAIModel || 'gpt-4o-mini');
+  }, [user?.autoTranslate, (user as any)?.defaultLanguage, (user as any)?.preferredAIModel]);
   const languageOptions = useMemo(
     () => [
       { code: 'en', name: 'English' },
@@ -91,6 +96,16 @@ export default function AISettingsScreen() {
     ],
     []
   );
+
+  const aiModelOptions = useMemo(
+    () => [
+      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and cost-effective' },
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Balanced performance and cost' },
+      { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable model' },
+      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'High performance' },
+    ],
+    []
+  );
   const filteredLanguages = useMemo(() => {
     const q = langQuery.trim().toLowerCase();
     if (!q) return languageOptions;
@@ -98,6 +113,14 @@ export default function AISettingsScreen() {
       (l) => l.name.toLowerCase().includes(q) || l.code.toLowerCase().includes(q)
     );
   }, [langQuery, languageOptions]);
+
+  const filteredModels = useMemo(() => {
+    const q = modelQuery.trim().toLowerCase();
+    if (!q) return aiModelOptions;
+    return aiModelOptions.filter(
+      (m) => m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q) || m.description.toLowerCase().includes(q)
+    );
+  }, [modelQuery, aiModelOptions]);
 
   React.useEffect(() => {
     loadSettings();
@@ -199,11 +222,25 @@ export default function AISettingsScreen() {
     }
   };
 
+  const onSelectAIModel = async (model: string) => {
+    const prev = preferredAIModel;
+    setPreferredAIModel(model);
+    try {
+      await updateProfile({ preferredAIModel: model });
+      setModelModalVisible(false);
+    } catch (e) {
+      setPreferredAIModel(prev);
+      Alert.alert('Error', 'Failed to update AI model preference');
+    }
+  };
+
   return (
     <>
       <Stack.Screen
         options={{
-          headerShown: false,
+          headerShown: true,
+          headerBackTitle: '',
+          title: 'AI Settings',
         }}
       />
       
@@ -276,7 +313,66 @@ export default function AISettingsScreen() {
               </View>
             </View>
           </Modal>
+
+          <Modal
+            visible={modelModalVisible}
+            animationType="slide"
+            transparent
+            onRequestClose={() => setModelModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalTitle}>Choose AI Model</Text>
+                <TextInput
+                  placeholder="Search model or description"
+                  placeholderTextColor="#999"
+                  value={modelQuery}
+                  onChangeText={setModelQuery}
+                  style={styles.searchInput}
+                />
+                <ScrollView style={{ maxHeight: 360 }}>
+                  {filteredModels.map((m) => (
+                    <TouchableOpacity
+                      key={m.id}
+                      style={styles.optionRow}
+                      onPress={() => onSelectAIModel(m.id)}
+                    >
+                      <Text style={styles.optionText}>{m.name}</Text>
+                      <Text style={styles.optionCode}>{m.description}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <View style={{ height: 12 }} />
+                <TouchableOpacity onPress={() => setModelModalVisible(false)} style={styles.modalCloseButton}>
+                  <Text style={styles.modalCloseText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
         </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>AI Model</Text>
+          <Text style={styles.sectionDescription}>
+            Choose which OpenAI model to use for AI features like summaries, suggestions, and translations
+          </Text>
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingTitle}>Preferred Model</Text>
+              <Text style={styles.settingDescription}>Select the AI model for all features</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setModelModalVisible(true)}
+              style={styles.dropdownButton}
+            >
+              <Text style={styles.dropdownButtonText}>
+                {aiModelOptions.find((m) => m.id === preferredAIModel)?.name || 'GPT-4o Mini'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>AI Features</Text>
           <Text style={styles.sectionDescription}>
@@ -389,8 +485,8 @@ export default function AISettingsScreen() {
           <Text style={styles.sectionTitle}>About</Text>
           <Text style={styles.infoText}>
             Conch Social uses AI to help you stay productive in team conversations.
-            AI features are powered by OpenAI's GPT-4 and run securely in Firebase
-            Cloud Functions.
+            AI features are powered by OpenAI models and run securely in Firebase
+            Cloud Functions. You can choose your preferred model in the AI Model section above.
           </Text>
         </View>
       </ScrollView>

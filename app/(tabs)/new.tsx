@@ -98,7 +98,7 @@ export default function NewMessageScreen() {
   }, [searchQuery, localFilteredUsers.length, user?.id]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 12, paddingBottom: tabBarHeight }] }>
+    <View style={[styles.container, { paddingBottom: tabBarHeight }]}>
       <View style={styles.searchBarRow}>
         <TextInput
           testID="user-search-input"
@@ -123,7 +123,7 @@ export default function NewMessageScreen() {
           ListEmptyComponent={() => (
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateText}>
-                {searchQuery.trim().length >= 3 ? 'No users found' : 'Recent chats appear here'}
+                {searchQuery.trim().length >= 3 ? 'No users found' : 'No recent chats'}
               </Text>
             </View>
           )}

@@ -232,7 +232,11 @@ export async function getUserById(userId: string): Promise<User | null> {
       displayName: data.displayName,
       photoURL: data.photoURL,
       timeZone: data.timeZone,
+      defaultLanguage: data.defaultLanguage,
+      autoTranslate: data.autoTranslate,
+      preferredAIModel: data.preferredAIModel,
       workHours: data.workHours,
+      appearOffline: data.appearOffline,
       createdAt: data.createdAt?.toDate() || new Date(),
       updatedAt: data.updatedAt?.toDate() || new Date(),
     };

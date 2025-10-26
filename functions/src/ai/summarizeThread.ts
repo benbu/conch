@@ -14,6 +14,7 @@ export async function summarizeThread(
   options?: {
     messageLimit?: number;
     dateRange?: { start: Date; end: Date };
+    model?: string;
   }
 ): Promise<AISummary> {
   console.log(`Summarizing thread ${conversationId} for user ${userId}`);
@@ -25,19 +26,40 @@ export async function summarizeThread(
     throw new Error('No messages found in conversation');
   }
 
-  // Format messages for AI
+  // Resolve sender display names (prefer users.displayName, fallback to users.username, else 'someone')
+  const uniqueSenderIds = Array.from(new Set(messages.map((m) => m.senderId)));
+  const userRefs = uniqueSenderIds.map((id) => admin.firestore().collection('users').doc(id));
+
+  let userDocs: any[] = [];
+  try {
+    // Use batched get if available
+    userDocs = await (admin.firestore() as any).getAll(...userRefs);
+  } catch {
+    // Fallback to individual gets
+    userDocs = await Promise.all(userRefs.map((ref) => ref.get()));
+  }
+
+  const nameById = new Map<string, string>();
+  for (const doc of userDocs) {
+    const data = doc?.data?.() ?? doc?.data; // support both shapes
+    const displayName = (data && (data.displayName || data.username)) || 'someone';
+    nameById.set(doc.id, displayName);
+  }
+
+  // Format messages for AI with resolved names; use 'you' for current user's messages
   const messagesText = messages
     .map((msg) => {
-      const timestamp = msg.createdAt instanceof Date 
-        ? msg.createdAt.toISOString() 
+      const timestamp = msg.createdAt instanceof Date
+        ? msg.createdAt.toISOString()
         : new Date(msg.createdAt).toISOString();
-      return `[${timestamp}] User ${msg.senderId}: ${msg.text}`;
+      const senderName = msg.senderId === userId ? 'you' : (nameById.get(msg.senderId) || 'someone');
+      return `[${timestamp}] ${senderName}: ${msg.text}`;
     })
     .join('\n');
 
   // Generate summary using Vercel AI SDK
   const { text: summary } = await generateText({
-    model: openai('gpt-4o-mini') as any,
+    model: openai(options?.model || 'gpt-4o-mini') as any,
     prompt: `You are a helpful assistant that summarizes team conversations. 
     
 Given the following conversation thread, provide a concise summary that:

@@ -25,7 +25,7 @@ const SuggestionsSchema = z.object({
 export async function suggestResponses(
   conversationId: string,
   userId: string,
-  options?: { lastMessagesN?: number }
+  options?: { lastMessagesN?: number; model?: string }
 ): Promise<string[]> {
   const lastMessagesN = Math.max(3, Math.min(50, options?.lastMessagesN ?? 10));
 
@@ -51,7 +51,7 @@ Constraints:
 `;
 
   const { object } = (await generateObject({
-    model: openai(process.env.SUGGESTION_MODEL || 'gpt-4o-mini') as any,
+    model: openai(options?.model || process.env.SUGGESTION_MODEL || 'gpt-4o-mini') as any,
     schema: SuggestionsSchema as any,
     prompt: `${systemPrompt}\n\nConversation (most recent last):\n${messagesText}\n\nReturn JSON with { suggestions: string[] }`,
   } as any)) as any;

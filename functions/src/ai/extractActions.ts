@@ -26,6 +26,7 @@ export async function extractActions(
   options?: {
     messageLimit?: number;
     dateRange?: { start: Date; end: Date };
+    model?: string;
   }
 ): Promise<AIActions> {
   console.log(`Extracting actions from ${conversationId} for user ${userId}`);
@@ -49,7 +50,7 @@ export async function extractActions(
 
   // Extract action items using structured output
   const { object: actionsData } = (await generateObject({
-    model: openai('gpt-4o-mini') as any,
+    model: openai(options?.model || 'gpt-4o-mini') as any,
     schema: ActionsResponseSchema as any,
     prompt: `You are a helpful assistant that extracts action items from team conversations.
 

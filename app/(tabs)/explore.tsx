@@ -3,23 +3,22 @@ import GroupNameModal from '@/components/GroupNameModal';
 import PresenceIndicator from '@/components/PresenceIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
-import { globalSearch, SearchResult } from '@/services/searchService';
+import { SearchResult, searchUsers as userSearch } from '@/services/searchService';
 import { useChatStore } from '@/stores/chatStore';
-import { Message, User } from '@/types';
+import { User } from '@/types';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useHeaderHeight } from '@react-navigation/elements';
-import { format } from 'date-fns';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  SectionList,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    SectionList,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -70,48 +69,20 @@ export default function ExploreScreen() {
     return Object.values(userMap);
   }, [conversations, participantsByConversation, user]);
 
-  // Get recent messages from all conversations for local search
-  const localMessages = useMemo(() => {
-    const messages: Array<{ message: any; conversationId: string; conversationTitle: string }> = [];
-    
-    // Get last few messages from each conversation
-    for (const conv of conversations) {
-      if (conv.lastMessage) {
-        messages.push({
-          message: conv.lastMessage,
-          conversationId: conv.id,
-          conversationTitle: conv.title || conv.name || 'Chat',
-        });
-      }
-    }
-
-    return messages.sort((a, b) => {
-      const timeA = a.message.createdAt?.getTime() || 0;
-      const timeB = b.message.createdAt?.getTime() || 0;
-      return timeB - timeA;
-    });
-  }, [conversations]);
-
-  // Local filtering - instant results
-  const localFilteredResults = useMemo(() => {
+  // Local filtering - people only
+  const localFilteredUsers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return { users: [], messages: [] };
+    if (!q) return [] as User[];
 
-    const filteredUsers = localUsers.filter(
+    return localUsers.filter(
       (u) =>
         u.displayName?.toLowerCase().includes(q) ||
         u.email?.toLowerCase().includes(q)
     );
+  }, [searchQuery, localUsers]);
 
-    const filteredMessages = localMessages.filter(
-      (m) => m.message.text?.toLowerCase().includes(q)
-    );
-
-    return { users: filteredUsers, messages: filteredMessages };
-  }, [searchQuery, localUsers, localMessages]);
-
-  // Total local results count
-  const localResultsCount = localFilteredResults.users.length + localFilteredResults.messages.length;
+  // Total local results count (users only)
+  const localResultsCount = localFilteredUsers.length;
 
   // Show deep search button when local results are limited
   const showDeepSearchButton = searchQuery.trim().length >= 3 && localResultsCount <= 3 && !hasDeepSearched;
@@ -123,7 +94,7 @@ export default function ExploreScreen() {
     try {
       setLoading(true);
       setHasDeepSearched(true);
-      const results = await globalSearch(searchQuery.trim());
+      const results = await userSearch(searchQuery.trim());
       setDeepSearchResults(results);
     } catch (error) {
       console.error('Deep search error:', error);
@@ -138,50 +109,47 @@ export default function ExploreScreen() {
     setDeepSearchResults([]);
   }, [searchQuery]);
 
-  // Prepare sections for display
+  // Prepare sections for display (People only)
   const sections: SearchSection[] = useMemo(() => {
     const results: SearchSection[] = [];
+    const q = searchQuery.trim();
 
-    if (hasDeepSearched) {
-      // Show deep search results grouped
-      const userResults = deepSearchResults.filter(r => r.type === 'user');
-      const messageResults = deepSearchResults.filter(r => r.type === 'message');
-
-      if (userResults.length > 0) {
-        results.push({ title: 'People', data: userResults });
-      }
-      if (messageResults.length > 0) {
-        results.push({ title: 'Messages', data: messageResults });
-      }
-    } else {
-      // Show local filtered results
-      if (localFilteredResults.users.length > 0) {
+    if (q.length === 0) {
+      // Show all known users by default
+      if (localUsers.length > 0) {
         results.push({
           title: 'People',
-          data: localFilteredResults.users.map(u => ({
+          data: localUsers.map((u) => ({
             type: 'user' as const,
             id: u.id,
             data: u,
           })),
         });
       }
-      if (localFilteredResults.messages.length > 0) {
-        results.push({
-          title: 'Messages',
-          data: localFilteredResults.messages.map(m => ({
-            type: 'message' as const,
-            id: m.message.id,
-            data: m.message,
-            conversationId: m.conversationId,
-            conversationTitle: m.conversationTitle,
-            timestamp: m.message.createdAt,
-          })),
-        });
+      return results;
+    }
+
+    if (hasDeepSearched) {
+      const userResults = deepSearchResults.filter((r) => r.type === 'user');
+      if (userResults.length > 0) {
+        results.push({ title: 'People', data: userResults });
       }
+      return results;
+    }
+
+    if (localFilteredUsers.length > 0) {
+      results.push({
+        title: 'People',
+        data: localFilteredUsers.map((u) => ({
+          type: 'user' as const,
+          id: u.id,
+          data: u,
+        })),
+      });
     }
 
     return results;
-  }, [hasDeepSearched, deepSearchResults, localFilteredResults]);
+  }, [searchQuery, hasDeepSearched, deepSearchResults, localUsers, localFilteredUsers]);
 
   const toggleUserSelection = (selectedUser: User) => {
     setSelectedUsers((prev) => {
@@ -280,62 +248,33 @@ export default function ExploreScreen() {
   };
 
   const renderResult = ({ item }: { item: SearchResult }) => {
-    if (item.type === 'user') {
-      const userData = item.data as User;
-      const isSelected = selectedUsers.some((u) => u.id === userData.id);
-      
-      return (
-        <TouchableOpacity
-          style={[styles.resultItem, isSelected && styles.resultItemSelected]}
-          onPress={() => handleUserTap(userData)}
-          onLongPress={() => toggleUserSelection(userData)}
-        >
-          {isMultiSelectMode && (
-            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-              {isSelected && <Text style={styles.checkmark}>✓</Text>}
-            </View>
-          )}
-          <View style={styles.avatarContainer}>
-            <Avatar user={userData} size={50} />
-            <View style={styles.presenceDot}>
-              <PresenceIndicator userId={userData.id} user={userData} size="small" />
-            </View>
-          </View>
-          <View style={styles.resultContent}>
-            <Text style={styles.resultTitle}>{userData.displayName}</Text>
-            <Text style={styles.resultSubtitle}>{userData.email}</Text>
-          </View>
-          {!isMultiSelectMode && <Text style={styles.actionText}>Chat</Text>}
-        </TouchableOpacity>
-      );
-    }
+    const userData = item.data as User;
+    const isSelected = selectedUsers.some((u) => u.id === userData.id);
 
-    if (item.type === 'message') {
-      const messageData = item.data as Message;
-      return (
-        <TouchableOpacity
-          style={styles.resultItem}
-          onPress={() => handleMessageTap(item.conversationId!, item.id)}
-        >
-          <View style={[styles.avatar, styles.messageAvatar]}>
-            <Text style={styles.avatarText}>💬</Text>
+    return (
+      <TouchableOpacity
+        style={[styles.resultItem, isSelected && styles.resultItemSelected]}
+        onPress={() => handleUserTap(userData)}
+        onLongPress={() => toggleUserSelection(userData)}
+      >
+        {isMultiSelectMode && (
+          <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+            {isSelected && <Text style={styles.checkmark}>✓</Text>}
           </View>
-          <View style={styles.resultContent}>
-            <Text style={styles.resultTitle}>{item.conversationTitle || 'Chat'}</Text>
-            <Text style={styles.messagePreview} numberOfLines={2}>
-              {messageData.text}
-            </Text>
-            {item.timestamp && (
-              <Text style={styles.timestamp}>
-                {format(item.timestamp, 'MMM d, h:mm a')}
-              </Text>
-            )}
+        )}
+        <View style={styles.avatarContainer}>
+          <Avatar user={userData} size={50} />
+          <View style={styles.presenceDot}>
+            <PresenceIndicator userId={userData.id} user={userData} size="small" />
           </View>
-        </TouchableOpacity>
-      );
-    }
-
-    return null;
+        </View>
+        <View style={styles.resultContent}>
+          <Text style={styles.resultTitle}>{userData.displayName}</Text>
+          <Text style={styles.resultSubtitle}>{userData.email}</Text>
+        </View>
+        {!isMultiSelectMode && <Text style={styles.actionText}>Chat</Text>}
+      </TouchableOpacity>
+    );
   };
 
   const renderSectionHeader = ({ section }: { section: SearchSection }) => (
@@ -349,7 +288,6 @@ export default function ExploreScreen() {
       style={[
         styles.container,
         {
-          paddingTop: insets.top + 12,
           paddingBottom:
             tabBarHeight + (isMultiSelectMode && selectedUsers.length >= 1 ? 96 : 0),
         },
@@ -368,7 +306,7 @@ export default function ExploreScreen() {
         )}
         <TextInput
           style={styles.searchInput}
-          placeholder="Search people and messages..."
+          placeholder="Search people..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           autoCapitalize="none"
@@ -380,26 +318,9 @@ export default function ExploreScreen() {
         <View style={styles.centered}>
           <ActivityIndicator size="large" />
         </View>
-      ) : searchQuery.trim().length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateTitle}>Search</Text>
-          <Text style={styles.emptyStateText}>
-            Search for people and messages across all your conversations
-          </Text>
-          {!isMultiSelectMode && (
-            <TouchableOpacity
-              style={styles.multiSelectButton}
-              onPress={() => setIsMultiSelectMode(true)}
-            >
-              <Text style={styles.multiSelectButtonText}>
-                Create Group Chat
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
       ) : sections.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>No results found</Text>
+          <Text style={styles.emptyStateText}>No people found</Text>
           {showDeepSearchButton && (
             <TouchableOpacity
               style={styles.deepSearchButton}

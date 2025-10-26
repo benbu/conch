@@ -8,6 +8,7 @@ export interface User {
   timeZone: string;
   defaultLanguage?: string; // ISO 639-1 like 'en', 'es'
   autoTranslate?: boolean;
+  preferredAIModel?: string; // OpenAI model identifier
   workHours?: {
     start: string; // HH:mm format
     end: string;   // HH:mm format

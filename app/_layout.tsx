@@ -181,6 +181,7 @@ function RootNavigator() {
               headerBackground: () => (
                 <View
                   style={[StyleSheet.absoluteFill, { backgroundColor: '#f5f5f5' }]}
+                  pointerEvents="box-none"
                 />
               ),
             }}

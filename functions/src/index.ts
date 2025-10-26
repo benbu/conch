@@ -59,10 +59,15 @@ export const aiSummarizeThread = onRequest(
     }
 
     try {
+      // Fetch user's preferred AI model
+      const userDoc = await admin.firestore().collection('users').doc(authReq.user.uid).get();
+      const userData = userDoc.data();
+      const preferredModel = userData?.preferredAIModel || 'gpt-4o-mini';
+
       const summary = await summarizeThread(
         conversationId,
         authReq.user.uid,
-        options
+        { ...options, model: preferredModel }
       );
       res.status(200).json({ success: true, data: summary });
     } catch (error: any) {
@@ -112,10 +117,15 @@ export const aiSuggestResponses = onRequest(
     }
 
     try {
+      // Fetch user's preferred AI model
+      const userDoc = await admin.firestore().collection('users').doc(authReq.user.uid).get();
+      const userData = userDoc.data();
+      const preferredModel = userData?.preferredAIModel || 'gpt-4o-mini';
+
       const suggestions = await suggestResponses(
         conversationId,
         authReq.user.uid,
-        options
+        { ...options, model: preferredModel }
       );
       res.status(200).json({ success: true, data: suggestions });
     } catch (error: any) {
@@ -165,10 +175,15 @@ export const aiExtractActions = onRequest(
     }
 
     try {
+      // Fetch user's preferred AI model
+      const userDoc = await admin.firestore().collection('users').doc(authReq.user.uid).get();
+      const userData = userDoc.data();
+      const preferredModel = userData?.preferredAIModel || 'gpt-4o-mini';
+
       const actions = await extractActions(
         conversationId,
         authReq.user.uid,
-        options
+        { ...options, model: preferredModel }
       );
       res.status(200).json({ success: true, data: actions });
     } catch (error: any) {
@@ -218,10 +233,15 @@ export const aiTrackDecision = onRequest(
     }
 
     try {
+      // Fetch user's preferred AI model
+      const userDoc = await admin.firestore().collection('users').doc(authReq.user.uid).get();
+      const userData = userDoc.data();
+      const preferredModel = userData?.preferredAIModel || 'gpt-4o-mini';
+
       const decisions = await trackDecision(
         conversationId,
         authReq.user.uid,
-        options
+        { ...options, model: preferredModel }
       );
       res.status(200).json({ success: true, data: decisions });
     } catch (error: any) {
@@ -271,10 +291,15 @@ export const aiDetectPriority = onRequest(
     }
 
     try {
+      // Fetch user's preferred AI model
+      const userDoc = await admin.firestore().collection('users').doc(authReq.user.uid).get();
+      const userData = userDoc.data();
+      const preferredModel = userData?.preferredAIModel || 'gpt-4o-mini';
+
       const priority = await detectPriority(
         conversationId,
         authReq.user.uid,
-        options
+        { ...options, model: preferredModel }
       );
       res.status(200).json({ success: true, data: priority });
     } catch (error: any) {

@@ -1,5 +1,5 @@
 import { User } from '@/types';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -11,6 +11,7 @@ import {
     View
 } from 'react-native';
 import Avatar from './Avatar';
+import { AvatarWithPresence } from './PresenceIndicator';
 
 interface MemberWithRole extends User {
   role: 'admin' | 'team' | 'user';
@@ -136,7 +137,9 @@ export default function MemberManagementModal({
     return (
       <View style={styles.memberItem}>
         <View style={styles.memberInfo}>
-          <Avatar user={item} size={45} />
+          <AvatarWithPresence user={item} size={45}>
+            <Avatar user={item} size={45} />
+          </AvatarWithPresence>
           <View style={styles.memberDetails}>
             <Text style={styles.memberName}>
               {item.displayName}

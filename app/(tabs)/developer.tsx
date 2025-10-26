@@ -4,7 +4,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { getTranslationErrorsForUser } from '@/services/firestoreService';
 import { clearFailedMessages, clearQueue, getQueueStats } from '@/services/offlineQueueService';
 import { useHeaderHeight } from '@react-navigation/elements';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -58,13 +58,20 @@ export default function DeveloperScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={{ paddingTop: headerHeight + 12, paddingBottom: 40 }}
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
-      testID="developer-screen"
-    >
-      <Text style={styles.title}>Developer Tools</Text>
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerBackTitle: '',
+          title: 'Developer Tools',
+        }}
+      />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingTop: headerHeight + 12, paddingBottom: 40 }}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+        testID="developer-screen"
+      >
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Translation Errors (Your Conversations)</Text>
@@ -164,6 +171,7 @@ export default function DeveloperScreen() {
         </View>
       )}
     </ScrollView>
+    </>
   );
 }
 
@@ -171,13 +179,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#000',
-    paddingHorizontal: 16,
-    marginBottom: 8,
   },
   section: {
     backgroundColor: '#fff',

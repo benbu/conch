@@ -1,6 +1,6 @@
 import Avatar from '@/components/Avatar';
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, View } from 'react-native';
 import OverlappingAvatars from '../OverlappingAvatars';
 import { AvatarWithPresence } from '../PresenceIndicator';
 
@@ -13,12 +13,8 @@ function ChatHeaderAvatarsBase({
 }: any) {
   if (type === 'group') {
     return (
-      <TouchableOpacity
-        onPress={onPressGroup}
-        activeOpacity={onPressGroup ? 0.7 : 1}
-        style={{ flexDirection: 'row', alignItems: 'center' }}
-      >
-        <OverlappingAvatars members={participants} maxVisible={3} size="small" />
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <OverlappingAvatars members={participants} maxVisible={3} size="small" onPress={onPressGroup} />
         <Text style={{ marginLeft: 8, color: '#000', fontWeight: '600', fontSize: 18 }} numberOfLines={1}>
           ({participants?.length || 0})
         </Text>
@@ -30,7 +26,7 @@ function ChatHeaderAvatarsBase({
             {conversationTitle}
           </Text>
         ) : null}
-      </TouchableOpacity>
+      </View>
     );
   }
   if (otherUser) {

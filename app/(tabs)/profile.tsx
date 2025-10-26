@@ -6,7 +6,6 @@ import { useChatStore } from '@/stores/chatStore';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useRouter } from 'expo-router';
-import React from 'react';
 import {
     Alert,
     ScrollView,
@@ -98,7 +97,7 @@ export default function ProfileScreen() {
           style={styles.menuItem}
           onPress={() => router.push('/(tabs)/presence-settings')}
         >
-          <Text style={styles.menuItemText}>🟢 Presence Settings</Text>
+          <Text style={styles.menuItemText}>Presence Settings</Text>
           <Text style={styles.menuItemChevron}>›</Text>
         </TouchableOpacity>
 
@@ -106,7 +105,7 @@ export default function ProfileScreen() {
           style={styles.menuItem}
           onPress={() => router.push('/(tabs)/ai-settings')}
         >
-          <Text style={styles.menuItemText}>✨ AI Settings</Text>
+          <Text style={styles.menuItemText}>AI Settings</Text>
           <Text style={styles.menuItemChevron}>›</Text>
         </TouchableOpacity>
 
@@ -132,7 +131,7 @@ export default function ProfileScreen() {
           onPress={() => router.push('/(tabs)/developer')}
           testID="open-developer-tools"
         >
-          <Text style={styles.menuItemText}>🧰 Developer Tools</Text>
+          <Text style={styles.menuItemText}>Developer Tools</Text>
           <Text style={styles.menuItemChevron}>›</Text>
         </TouchableOpacity>
       </View>
@@ -150,7 +149,7 @@ export default function ProfileScreen() {
               );
             }}
           >
-            <Text style={styles.menuItemText}>🔔 Test In-App Notification</Text>
+            <Text style={styles.menuItemText}>Test In-App Notification</Text>
             <Text style={styles.menuItemChevron}>›</Text>
           </TouchableOpacity>
         </View>
@@ -255,12 +254,12 @@ const styles = StyleSheet.create({
   signOutButton: {
     margin: 16,
     padding: 16,
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#D3D3D3',
     borderRadius: 8,
     alignItems: 'center',
   },
   signOutText: {
-    color: '#fff',
+    color: '#333',
     fontSize: 16,
     fontWeight: '600',
   },

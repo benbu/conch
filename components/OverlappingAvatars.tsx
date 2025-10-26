@@ -27,12 +27,15 @@ export default function OverlappingAvatars({
   const avatarSize = sizeMap[size];
   const overlap = avatarSize * 0.7; // 70% overlap for tighter stack
 
+  const Container: any = onPress ? TouchableOpacity : View;
+  const containerProps: any = onPress
+    ? { onPress, activeOpacity: 0.7 }
+    : { pointerEvents: 'box-none' };
+
   return (
-    <TouchableOpacity
+    <Container
       style={styles.container}
-      onPress={onPress}
-      disabled={!onPress}
-      activeOpacity={0.7}
+      {...containerProps}
     >
       <View style={styles.avatarStack}>
         {visibleMembers.map((member, index) => (
@@ -90,7 +93,7 @@ export default function OverlappingAvatars({
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </Container>
   );
 }
 

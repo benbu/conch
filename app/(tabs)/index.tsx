@@ -168,7 +168,7 @@ export default function ChatsScreen() {
       <TouchableOpacity
         testID={`conversation-item-${item.id}`}
         style={styles.conversationItem}
-        onPress={() => router.push(`/chat/${item.id}`)}
+        onPress={() => router.push(`/chat/test-chat?id=${item.id}`)}
         onLongPress={() => {
           if (canDelete) setActiveActionForId(item.id);
         }}

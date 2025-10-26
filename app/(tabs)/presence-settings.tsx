@@ -4,7 +4,7 @@ import { useUpdatePresence } from '@/hooks/usePresence';
 import { selectCustomStatus, useAuthStore } from '@/stores/authStore';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useHeaderHeight } from '@react-navigation/elements';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
     ActivityIndicator,
@@ -69,14 +69,15 @@ export default function PresenceSettingsScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: tabBarHeight }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Presence Settings</Text>
-      </View>
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerBackTitle: '',
+          title: 'Presence Settings',
+        }}
+      />
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: tabBarHeight }}>
 
       {/* Current Status Preview */}
       <View style={styles.section}>
@@ -189,6 +190,7 @@ export default function PresenceSettingsScreen() {
         </Text>
       </View>
     </ScrollView>
+    </>
   );
 }
 
@@ -196,26 +198,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-  },
-  header: {
-    backgroundColor: '#fff',
-    paddingTop: 60,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  backButton: {
-    marginBottom: 8,
-  },
-  backButtonText: {
-    color: '#007AFF',
-    fontSize: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#000',
   },
   section: {
     backgroundColor: '#fff',

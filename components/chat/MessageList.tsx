@@ -11,7 +11,7 @@ export function MessageList({
   loadingMore,
   headerSpacerHeight = 0,
   footerSpacerHeight = 0,
-  extraHeaderComponent,
+  //extraHeaderComponent,
 }: any) {
   return (
     <FlatList
@@ -33,11 +33,11 @@ export function MessageList({
       }}
       ListHeaderComponent={
         <>
-          {headerSpacerHeight > 0 ? <View style={{ height: headerSpacerHeight }} /> : null}
-          {extraHeaderComponent}
+          {headerSpacerHeight > 0 ? <View style={{ height: headerSpacerHeight }} pointerEvents="box-none" /> : null}
+          {/* {extraHeaderComponent} */}
         </>
       }
-      ListFooterComponent={footerSpacerHeight > 0 ? <View style={{ height: footerSpacerHeight }} /> : null}
+      ListFooterComponent={footerSpacerHeight > 0 ? <View style={{ height: footerSpacerHeight }} pointerEvents="box-none" /> : null}
     />
   );
 }

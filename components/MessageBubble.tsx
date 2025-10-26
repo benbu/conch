@@ -2,6 +2,7 @@
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Message } from '../types';
 import Avatar from './Avatar';
+import { AvatarWithPresence } from './PresenceIndicator';
 
 interface MessageBubbleProps {
   message: Message;
@@ -159,8 +160,10 @@ export function MessageBubble({ message, isOwn, showAvatar, onImagePress, onRetr
     <View style={[styles.messageRow, showAvatar ? styles.newOtherSenderTopGap : undefined]}>
       {/* Avatar or spacer */}
       <View style={showTimestampBelow ? [styles.avatarContainer, styles.avatarContainerRelative] : styles.avatarContainer}>
-        {showAvatar ? (
-          <Avatar user={message.sender} size={40} />
+        {showAvatar && message.sender ? (
+          <AvatarWithPresence user={message.sender} size={40}>
+            <Avatar user={message.sender} size={40} />
+          </AvatarWithPresence>
         ) : (
           <View style={styles.avatarSpacer} />
         )}

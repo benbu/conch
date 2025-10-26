@@ -24,6 +24,7 @@ export async function trackDecision(
   options?: {
     messageLimit?: number;
     dateRange?: { start: Date; end: Date };
+    model?: string;
   }
 ): Promise<AIDecision[]> {
   console.log(`Tracking decisions in ${conversationId} for user ${userId}`);
@@ -47,7 +48,7 @@ export async function trackDecision(
 
   // Extract decisions using structured output
   const { object: decisionsData } = (await generateObject({
-    model: openai('gpt-4o-mini') as any,
+    model: openai(options?.model || 'gpt-4o-mini') as any,
     schema: DecisionsResponseSchema as any,
     prompt: `You are a helpful assistant that identifies key decisions in team conversations.
 

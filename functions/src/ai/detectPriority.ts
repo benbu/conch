@@ -26,6 +26,7 @@ export async function detectPriority(
     messageLimit?: number;
     dateRange?: { start: Date; end: Date };
     minScore?: number;
+    model?: string;
   }
 ): Promise<AIPriority> {
   console.log(`Detecting priority messages in ${conversationId} for user ${userId}`);
@@ -49,7 +50,7 @@ export async function detectPriority(
 
   // Detect priority messages using structured output
   const { object: priorityData } = (await generateObject({
-    model: openai('gpt-4o-mini') as any,
+    model: openai(options?.model || 'gpt-4o-mini') as any,
     schema: PriorityResponseSchema as any,
     prompt: `You are a helpful assistant that identifies urgent or high-priority messages in team conversations.
 
