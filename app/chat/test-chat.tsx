@@ -33,7 +33,7 @@ import { Message, User } from '@/types';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { format } from 'date-fns';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -53,11 +53,9 @@ export default function ChatScreen() {
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
   const [inputBarHeight, setInputBarHeight] = React.useState(0);
-  const params = useLocalSearchParams<{ id?: string | string[]; messageId?: string | string[]; suppressHighlight?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; messageId?: string | string[] }>();
   const conversationId = Array.isArray(params.id) ? params.id?.[0] ?? null : params.id ?? null;
   const targetMessageId = Array.isArray(params.messageId) ? params.messageId?.[0] : params.messageId;
-  const suppressHighlightParam = Array.isArray(params.suppressHighlight) ? params.suppressHighlight?.[0] : params.suppressHighlight;
-  const suppressHighlight = suppressHighlightParam === '1' || suppressHighlightParam === 'true';
   
   const [messageText, setMessageText] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -166,15 +164,13 @@ export default function ChatScreen() {
             animated: true,
             viewPosition: 0.5, // Center the message
           });
-          // Highlight the message briefly unless suppressed
-          if (!suppressHighlight) {
-            setHighlightedMessageId(targetMessageId);
-            setTimeout(() => setHighlightedMessageId(null), 2000);
-          }
+          // Highlight the message briefly
+          setHighlightedMessageId(targetMessageId);
+          setTimeout(() => setHighlightedMessageId(null), 2000);
         }, 300);
       }
     }
-  }, [targetMessageId, messages.length, loading, suppressHighlight]);
+  }, [targetMessageId, messages.length, loading]);
 
   // On open, scroll so the oldest unread message is at the top; if none, go to bottom
   useEffect(() => {
@@ -575,56 +571,46 @@ export default function ChatScreen() {
     );
   }
 
-  const onHeaderPress = useCallback(() => {
-    console.log('Header title clicked! Conversation ID:', conversationId);
+  const handleHeaderPress = () => {
+    //console.log('Header title clicked! Conversation ID:', conversationId);
     if (conversation?.type === 'group') setShowMemberManagement(true);
-  }, [conversation?.type, conversationId]);
+  };
 
-  // Memoized header content and options to avoid remounts on every keystroke
-  const headerTitleContent = useMemo(() => (
-    <Pressable
-      onPress={onHeaderPress}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 0 }}>
-        <ChatHeaderAvatars
-          type={conversation?.type}
-          participants={participants}
-          otherUser={otherUser}
-          conversationTitle={conversation?.name || conversation?.title}
-        />
-      </View>
-    </Pressable>
-  ), [onHeaderPress, conversation?.type, conversation?.name, conversation?.title, participants, otherUser]);
-
-  const renderHeaderTitle = useCallback(() => headerTitleContent, [headerTitleContent]);
-
-  const screenOptions = useMemo(() => ({
-    headerShown: true,
-    headerTransparent: false,
-    headerBackTitle: '',
-    headerStyle: { backgroundColor: '#f5f5f5' },
-    headerTitleAlign: 'center' as const,
-    headerTitle: renderHeaderTitle,
-  }), [renderHeaderTitle]);
+    // Custom header: avatar(s) + title, left-aligned
+    const HeaderTitle = () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 0 }} >
+            <ChatHeaderAvatars
+              type={conversation?.type}
+              participants={participants}
+              otherUser={otherUser}
+              conversationTitle={conversation?.name || conversation?.title}
+            />
+        </View>
+  );
 
   return (
     <>
-      <Stack.Screen options={screenOptions} />
-
-      {conversation?.type === 'group' && (
-        <TouchableOpacity
-          style={styles.memberCountBanner}
-          onPress={() => setShowMemberManagement(true)}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.memberCountText}>
-            {participants.length} Member{participants.length !== 1 ? 's' : ''}
-          </Text>
-        </TouchableOpacity>
-      )}
-
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTransparent: false,
+          headerBackTitle: '',
+          headerStyle: {
+            backgroundColor: '#f5f5f5',
+          },
+          headerTitleAlign: 'center',
+          headerTitle: () => (
+            <Pressable
+              onPress={handleHeaderPress}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+            >
+              <HeaderTitle />
+            </Pressable>
+          ),
+        }}
+      />
+      
       <KeyboardAvoidingView
         style={styles.container}
         enabled={Platform.OS === 'ios' ? true : keyboardVisible}
@@ -744,7 +730,6 @@ export default function ChatScreen() {
           )}
         </>
       )}
-
     </>
   );
 }
@@ -752,37 +737,8 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    //justifyContent: 'center',
-    //alignItems: 'center',
     backgroundColor: '#fff',
-    //padding: 20,
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000',
-  },
-  infoText: {
-    fontSize: 24,
-    fontWeight: '600',
-    //marginBottom: 16,
-    color: '#000',
-  },
-  conversationId: {
-    fontSize: 16,
-    color: '#666',
-    //marginBottom: 24,
-    textAlign: 'center',
-  },
-  instructionText: {
-    fontSize: 14,
-    color: '#999',
-    fontStyle: 'italic',
-  },
-/*   container: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  }, */
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -962,16 +918,4 @@ const styles = StyleSheet.create({
     color: '#4A4A4A',
     lineHeight: 16,
   },
-  memberCountBanner: {
-    backgroundColor: '#f8f8f8',
-    paddingVertical: 0,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  memberCountText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '500',
-  },
 });
-

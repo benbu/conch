@@ -15,9 +15,6 @@ function ChatHeaderAvatarsBase({
     return (
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <OverlappingAvatars members={participants} maxVisible={3} size="small" onPress={onPressGroup} />
-        <Text style={{ marginLeft: 8, color: '#000', fontWeight: '600', fontSize: 18 }} numberOfLines={1}>
-          ({participants?.length || 0})
-        </Text>
         {conversationTitle ? (
           <Text
             style={{ marginLeft: 8, color: '#000', fontWeight: '600', fontSize: 18 }}
