@@ -33,7 +33,7 @@ import { Message, User } from '@/types';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { format } from 'date-fns';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -571,54 +571,44 @@ export default function ChatScreen() {
     );
   }
 
+  const onHeaderPress = useCallback(() => {
+    console.log('Header title clicked! Conversation ID:', conversationId);
+    if (conversation?.type === 'group') setShowMemberManagement(true);
+  }, [conversation?.type, conversationId]);
 
-  // Custom header: avatar(s) + title, left-aligned
-  const HeaderTitle = () => (
-      <Pressable onPress={() => {console.log('clickedMe'); setShowMemberManagement(true)}}>
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 0 }} >
+  // Memoized header content and options to avoid remounts on every keystroke
+  const headerTitleContent = useMemo(() => (
+    <Pressable
+      onPress={onHeaderPress}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 0 }}>
         <ChatHeaderAvatars
           type={conversation?.type}
           participants={participants}
           otherUser={otherUser}
           conversationTitle={conversation?.name || conversation?.title}
-          onPressGroup={() => {console.log('clickedGroup'); setShowMemberManagement(true)}}
-          onPressTitle={() => {console.log('clickedTitle'); setShowMemberManagement(true)}}
         />
-    </View>
-      </Pressable>
-  );
+      </View>
+    </Pressable>
+  ), [onHeaderPress, conversation?.type, conversation?.name, conversation?.title, participants, otherUser]);
 
-  // Floating title bar removed; title now lives inside header avatars
+  const renderHeaderTitle = useCallback(() => headerTitleContent, [headerTitleContent]);
+
+  const screenOptions = useMemo(() => ({
+    headerShown: true,
+    headerTransparent: false,
+    headerBackTitle: '',
+    headerStyle: { backgroundColor: '#f5f5f5' },
+    headerTitleAlign: 'center' as const,
+    headerTitle: renderHeaderTitle,
+  }), [renderHeaderTitle]);
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          animation: 'fade',
-          freezeOnBlur: true,
-          headerTransparent: true,
-          headerBackTitle: '',
-          contentStyle: { backgroundColor: 'white' },
-          headerTitleAlign: 'center',
-          headerBackground: () => (
-            <View
-              style={[StyleSheet.absoluteFill, { backgroundColor: '#f5f5f5', borderBottomWidth: 1, borderBottomColor: '#ddd' }]}
-              pointerEvents="box-none"
-            />
-          ),
-          headerTitle: () => (
-            <Pressable
-              onPress={() => { console.log('clickedTop'); if (conversation?.type === 'group') setShowMemberManagement(true); }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-              collapsable={false}
-            >
-              <HeaderTitle />
-            </Pressable>
-          ),
-          // AI menu trigger moved into InputBar
-        }}
-      />
+      <Stack.Screen options={screenOptions} />
+
       <KeyboardAvoidingView
         style={styles.container}
         enabled={Platform.OS === 'ios' ? true : keyboardVisible}
@@ -738,6 +728,7 @@ export default function ChatScreen() {
           )}
         </>
       )}
+
     </>
   );
 }
@@ -745,8 +736,37 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    //justifyContent: 'center',
+    //alignItems: 'center',
+    backgroundColor: '#fff',
+    //padding: 20,
   },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#000',
+  },
+  infoText: {
+    fontSize: 24,
+    fontWeight: '600',
+    //marginBottom: 16,
+    color: '#000',
+  },
+  conversationId: {
+    fontSize: 16,
+    color: '#666',
+    //marginBottom: 24,
+    textAlign: 'center',
+  },
+  instructionText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+/*   container: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  }, */
   centered: {
     flex: 1,
     justifyContent: 'center',

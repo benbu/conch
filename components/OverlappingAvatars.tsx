@@ -1,4 +1,5 @@
 import { User } from '@/types';
+import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Avatar from './Avatar';
 
@@ -9,7 +10,7 @@ interface OverlappingAvatarsProps {
   onPress?: () => void;
 }
 
-export default function OverlappingAvatars({
+function OverlappingAvatars({
   members,
   maxVisible = 3,
   size = 'medium',
@@ -96,6 +97,8 @@ export default function OverlappingAvatars({
     </Container>
   );
 }
+
+export default React.memo(OverlappingAvatars);
 
 const styles = StyleSheet.create({
   container: {

@@ -6,8 +6,6 @@ import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Modal, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const addedPadding = Platform.OS === 'ios' ? 0 : 8;
-
 export function InputBar({
   uploading,
   onPickImage,
@@ -23,7 +21,7 @@ export function InputBar({
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
-  const bottomPadding = keyboardVisible ? 8 : Math.max(addedPadding, (insets.bottom || 0) + addedPadding);
+  const bottomPadding = keyboardVisible ? (Platform.OS === 'ios' ? 96 : 120) : Math.max(0, (insets.bottom || 0));
   const handlePickImage = useCallback(() => {
     emitPresenceActivity();
     onPickImage && onPickImage();

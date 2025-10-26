@@ -168,7 +168,7 @@ export default function ChatsScreen() {
       <TouchableOpacity
         testID={`conversation-item-${item.id}`}
         style={styles.conversationItem}
-        onPress={() => router.push(`/chat/test-chat?id=${item.id}`)}
+        onPress={() => router.push(`/chat/view-chat?id=${item.id}`)}
         onLongPress={() => {
           if (canDelete) setActiveActionForId(item.id);
         }}
@@ -176,7 +176,7 @@ export default function ChatsScreen() {
         {isGroup ? (
           <View style={styles.groupAvatarContainer}>
             <OverlappingAvatars
-              members={others.slice(0, 3)}
+              members={others}
               maxVisible={2}
               size="small"
             />
