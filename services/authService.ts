@@ -14,6 +14,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseDB } from '../lib/firebase';
 import { User } from '../types';
+import { clearCreds, saveCreds } from './credentialsStore';
 import { presenceClient } from './presenceClient';
  
 
@@ -50,6 +51,19 @@ export async function signUpWithEmail(
     };
 
     await withNetworkLog('firestore', 'setDoc', `/users/${user.id}`, () => setDoc(doc(db, 'users', user.id), user));
+    try {
+      console.log('Attempting to save credentials after sign-up for silent login fallback');
+      await saveCreds(email, password);
+    } catch (e) {
+      console.warn('Failed to save credentials after sign-up:', e);
+    }
+
+    // Save credentials for silent sign-in fallback (Expo Go)
+    try {
+      await saveCreds(email, password);
+    } catch (e) {
+      console.warn('Failed to save credentials after sign-up:', e);
+    }
 
     return user;
   } catch (error: any) {
@@ -87,14 +101,25 @@ export async function signInWithEmail(
         updatedAt: new Date(),
       };
       
-      await withNetworkLog('firestore', 'setDoc', `/users/${user.id}`, () => setDoc(doc(db, 'users', user.id), user));
+      await withNetworkLog('firestore', 'setDoc', `/users/${firebaseUser.uid}`, () => setDoc(doc(db, 'users', firebaseUser.uid), user as User));
     }
 
+    // Ensure non-null user for downstream usage
+    const ensuredUser: User = user!;
+
     // Initialize presence client and enqueue activity (throttled online/lastSeen)
-    presenceClient.init(user.id);
+    presenceClient.init(ensuredUser.id);
     presenceClient.enqueueActivity();
 
-    return user;
+    // Save credentials for silent sign-in fallback (Expo Go)
+    try {
+      console.log('Attempting to save credentials (email/password) for silent login fallback');
+      await saveCreds(email, password);
+    } catch (e) {
+      console.warn('Failed to save credentials for silent login fallback:', e);
+    }
+
+    return ensuredUser;
   } catch (error: any) {
     console.error('Error signing in:', error);
     throw new Error(error.message || 'Failed to sign in');
@@ -128,14 +153,17 @@ export async function signInWithGoogleIdToken(idToken: string): Promise<User> {
         updatedAt: new Date(),
       };
 
-      await withNetworkLog('firestore', 'setDoc', `/users/${user.id}`, () => setDoc(doc(db, 'users', user.id), user));
+      await withNetworkLog('firestore', 'setDoc', `/users/${firebaseUser.uid}`, () => setDoc(doc(db, 'users', firebaseUser.uid), user as User));
     }
 
+    // Ensure non-null user for downstream usage
+    const ensuredUser: User = user!;
+
     // Initialize presence client and enqueue activity (throttled online/lastSeen)
-    presenceClient.init(user.id);
+    presenceClient.init(ensuredUser.id);
     presenceClient.enqueueActivity();
 
-    return user;
+    return ensuredUser;
   } catch (error: any) {
     console.error('Error signing in with Google:', error);
     throw new Error(error.message || 'Failed to sign in with Google');
@@ -161,7 +189,13 @@ export async function signOutUser(): Promise<void> {
     // Best-effort immediate offline update and dispose presence client
     await presenceClient.goOfflineNow();
     presenceClient.dispose();
-  await withNetworkLog('auth', 'signOut', 'auth', () => signOut(auth));
+    await withNetworkLog('auth', 'signOut', 'auth', () => signOut(auth));
+    // Clear stored credentials
+    try {
+      await clearCreds();
+    } catch (e) {
+      console.warn('Failed to clear stored credentials:', e);
+    }
   } catch (error: any) {
     console.error('Error signing out:', error);
     throw new Error(error.message || 'Failed to sign out');

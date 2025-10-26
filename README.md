@@ -1,3 +1,7 @@
+## Auth persistence in Expo Go vs Dev Client
+
+Firebase Auth persistence uses React Native `AsyncStorage` when available. In Expo Go, native persistence may not be initialized, causing sessions to be lost after force close. This app includes a fallback that securely stores email/password using `expo-secure-store` and attempts a silent sign-in on launch if Firebase does not restore a session. For best reliability, use a Dev Client or production build.
+
 # # Conch Social 🐚
 
 A production-grade **cross-platform mobile messenger** built with **React Native + Expo**, designed for **Remote Team Professionals** who collaborate asynchronously across time zones.

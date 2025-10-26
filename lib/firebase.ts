@@ -49,11 +49,14 @@ export function initializeFirebase(): void {
                 auth = initializeAuth(app!, {
                     persistence: getReactNativePersistence(ReactNativeAsyncStorage),
                 });
-            } catch {
+                console.log('Firebase Auth initialized with React Native persistence (AsyncStorage)');
+            } catch (e) {
+                console.warn('Falling back to default Auth (no RN persistence). Error:', e);
                 auth = getAuth(app!);
             }
         } else {
             auth = getAuth(app!);
+            console.warn('React Native persistence not available; using default Auth persistence');
         }
     }
 

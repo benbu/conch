@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#000',
     marginBottom: 32,
     textAlign: 'center',
   },

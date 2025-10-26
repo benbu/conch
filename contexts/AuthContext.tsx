@@ -1,7 +1,9 @@
 // Authentication context provider
+import { useRouter } from 'expo-router';
 import React, { createContext, ReactNode, useContext, useEffect } from 'react';
 import { initializeFirebase } from '../lib/firebase';
-import { onAuthStateChange } from '../services/authService';
+import { onAuthStateChange, signInWithEmail } from '../services/authService';
+import { getCreds } from '../services/credentialsStore';
 import { useAuthStore } from '../stores/authStore';
 
 interface AuthContextType {
@@ -13,6 +15,8 @@ const AuthContext = createContext<AuthContextType>({ initialized: false });
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [initialized, setInitialized] = React.useState(false);
   const { setUser, setLoading } = useAuthStore();
+  const attemptedSilentRef = React.useRef(false);
+  const router = useRouter();
 
   useEffect(() => {
     // Initialize Firebase
@@ -24,9 +28,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Listen to auth state changes
-    const unsubscribe = onAuthStateChange((user) => {
-      setUser(user);
-      
+    const unsubscribe = onAuthStateChange(async (user) => {
+      if (user) {
+        setUser(user);
+        if (!initialized) {
+          setInitialized(true);
+          setLoading(false);
+        }
+        return;
+      }
+
+      // No user from Firebase; attempt silent sign-in once using stored credentials
+      if (!attemptedSilentRef.current) {
+        attemptedSilentRef.current = true;
+        try {
+          const creds = await getCreds();
+          console.log('Silent sign-in: creds loaded?', !!creds);
+          if (creds && creds.email && creds.password) {
+            console.log('Silent sign-in: attempting with stored creds');
+            await signInWithEmail(creds.email, creds.password);
+            // Ensure navigation to main tabs after silent sign-in succeeds
+            setTimeout(() => {
+              try { router.replace('/(tabs)'); } catch {}
+            }, 0);
+            return; // onAuthStateChanged will fire again
+          }
+        } catch (e) {
+          console.warn('Silent sign-in attempt failed:', e);
+        }
+      }
+
+      // Proceed to initialized state with no user
       if (!initialized) {
         setInitialized(true);
         setLoading(false);
