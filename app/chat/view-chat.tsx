@@ -53,9 +53,11 @@ export default function ChatScreen() {
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
   const [inputBarHeight, setInputBarHeight] = React.useState(0);
-  const params = useLocalSearchParams<{ id?: string | string[]; messageId?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; messageId?: string | string[]; suppressHighlight?: string | string[] }>();
   const conversationId = Array.isArray(params.id) ? params.id?.[0] ?? null : params.id ?? null;
   const targetMessageId = Array.isArray(params.messageId) ? params.messageId?.[0] : params.messageId;
+  const suppressHighlightParam = Array.isArray(params.suppressHighlight) ? params.suppressHighlight?.[0] : params.suppressHighlight;
+  const suppressHighlight = suppressHighlightParam === '1' || suppressHighlightParam === 'true';
   
   const [messageText, setMessageText] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -164,13 +166,15 @@ export default function ChatScreen() {
             animated: true,
             viewPosition: 0.5, // Center the message
           });
-          // Highlight the message briefly
-          setHighlightedMessageId(targetMessageId);
-          setTimeout(() => setHighlightedMessageId(null), 2000);
+          // Highlight the message briefly unless suppressed
+          if (!suppressHighlight) {
+            setHighlightedMessageId(targetMessageId);
+            setTimeout(() => setHighlightedMessageId(null), 2000);
+          }
         }, 300);
       }
     }
-  }, [targetMessageId, messages.length, loading]);
+  }, [targetMessageId, messages.length, loading, suppressHighlight]);
 
   // On open, scroll so the oldest unread message is at the top; if none, go to bottom
   useEffect(() => {

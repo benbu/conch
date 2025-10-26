@@ -11,13 +11,13 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -134,7 +134,11 @@ export default function NewMessageScreen() {
               onPress={async () => {
                 try {
                   const conversationId = await createConversation([item.id], undefined, 'direct');
-                  router.push(`/chat/${conversationId}`);
+                  if (conversationId) {
+                    router.push(`/chat/view-chat?id=${conversationId}`);
+                  } else {
+                    console.error('Failed to create conversation: No ID returned');
+                  }
                 } catch (error) {
                   console.error('Failed to start chat', error);
                 }

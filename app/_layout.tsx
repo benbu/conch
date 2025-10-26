@@ -146,7 +146,7 @@ function RootNavigator() {
       // Clear immediately to avoid reappearance
       setShowNotification(false);
       setNotificationData(null);
-      router.push(`/chat/${notificationData.conversationId}`);
+      router.push(`/chat/view-chat?id=${notificationData.conversationId}`);
     }
   };
 
@@ -174,7 +174,7 @@ function RootNavigator() {
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" options={{ title: ' ' }} />
           <Stack.Screen
-            name="chat/[id]"
+            name="chat/view-chat"
             options={{
               headerShown: true,
               headerTransparent: true,

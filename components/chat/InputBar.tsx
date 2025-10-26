@@ -21,7 +21,7 @@ export function InputBar({
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
-  const bottomPadding = keyboardVisible ? (Platform.OS === 'ios' ? 96 : 120) : Math.max(0, (insets.bottom || 0));
+  const bottomPadding = keyboardVisible ? 8 : Platform.OS === 'ios' ? Math.max(0, (insets.bottom - 12 || 0)) : Math.max(0, (insets.bottom || 0));
   const handlePickImage = useCallback(() => {
     emitPresenceActivity();
     onPickImage && onPickImage();

@@ -11,14 +11,14 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    SectionList,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  SectionList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -180,11 +180,15 @@ export default function ExploreScreen() {
       );
 
       if (existingConv) {
-        router.push(`/chat/${existingConv.id}`);
+        router.push(`/chat/view-chat?id=${existingConv.id}`);
       } else {
         // Create new conversation
         const convId = await createConversation([selectedUser.id], undefined, 'direct');
-        router.push(`/chat/${convId}`);
+        if (convId) {
+          router.push(`/chat/view-chat?id=${convId}`);
+        } else {
+          console.error('Failed to create conversation: No ID returned');
+        }
       }
     } catch (error) {
       console.error('Failed to open chat:', error);
@@ -205,11 +209,16 @@ export default function ExploreScreen() {
             (c) => c.type === 'direct' && c.participantIds.includes(only.id)
           );
           if (existingConv) {
-            router.push(`/chat/${existingConv.id}`);
+            router.push(`/chat/view-chat?id=${existingConv.id}`);
             return;
           }
           const convId = await createConversation([only.id], undefined, 'direct');
-          router.push(`/chat/${convId}`);
+          if (convId) {
+            router.push(`/chat/view-chat?id=${convId}`);
+          } else {
+            console.error('Failed to create conversation: No ID returned');
+            Alert.alert('Error', 'Failed to start chat');
+          }
         } catch (error) {
           console.error('Failed to start chat', error);
           Alert.alert('Error', 'Failed to start chat');
@@ -226,12 +235,17 @@ export default function ExploreScreen() {
       const participantIds = selectedUsers.map((u) => u.id);
       const convId = await createConversation(participantIds, undefined, 'group', groupName);
       
-      // Reset selection state
-      setSelectedUsers([]);
-      setIsMultiSelectMode(false);
-      
-      // Navigate to new group
-      router.push(`/chat/${convId}`);
+      if (convId) {
+        // Reset selection state
+        setSelectedUsers([]);
+        setIsMultiSelectMode(false);
+        
+        // Navigate to new group
+        router.push(`/chat/view-chat?id=${convId}`);
+      } else {
+        console.error('Failed to create group: No ID returned');
+        Alert.alert('Error', 'Failed to create group chat');
+      }
     } catch (error) {
       console.error('Failed to create group:', error);
       Alert.alert('Error', 'Failed to create group chat');
@@ -241,10 +255,12 @@ export default function ExploreScreen() {
   const cancelMultiSelect = () => {
     setSelectedUsers([]);
     setIsMultiSelectMode(false);
+    setSearchQuery('');
+    router.push('/(tabs)');
   };
 
   const handleMessageTap = (conversationId: string, messageId: string) => {
-    router.push(`/chat/${conversationId}?messageId=${messageId}`);
+    router.push(`/chat/view-chat?id=${conversationId}&messageId=${messageId}`);
   };
 
   const renderResult = ({ item }: { item: SearchResult }) => {

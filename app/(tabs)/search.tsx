@@ -7,15 +7,15 @@ import { globalSearch, SearchResult } from '@/services/searchService';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { router, Stack } from 'expo-router';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -56,9 +56,9 @@ export default function SearchScreen() {
         style={styles.resultItem}
         onPress={() => {
           if (item.type === 'message' && item.conversationId) {
-            router.push(`/chat/${item.conversationId}`);
+            router.push(`/chat/view-chat?id=${item.conversationId}`);
           } else if (item.type === 'conversation') {
-            router.push(`/chat/${item.id}`);
+            router.push(`/chat/view-chat?id=${item.id}`);
           } else if (item.type === 'user') {
             // Navigate to user profile or start chat
             // router.push(`/profile/${item.id}`);

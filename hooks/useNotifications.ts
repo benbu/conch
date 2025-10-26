@@ -5,7 +5,7 @@
 
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   addNotificationReceivedListener,
   addNotificationResponseReceivedListener,
@@ -21,6 +21,7 @@ export function useNotifications() {
   const [notification, setNotification] = useState<Notifications.Notification | null>(null);
   const [badgeCount, setBadgeCountState] = useState(0);
   const router = useRouter();
+  const processedNotificationIdsRef = useRef<Set<string>>(new Set());
 
   /**
    * Initialize notifications
@@ -35,6 +36,28 @@ export function useNotifications() {
 
     // Get initial badge count
     getBadgeCount().then(setBadgeCountState);
+
+    // Handle cold-start notification (app launched from tapping a notification)
+    (async () => {
+      try {
+        const last = await Notifications.getLastNotificationResponseAsync();
+        const data = last?.notification.request.content.data as any;
+        const identifier = last?.notification.request.identifier;
+        if (identifier && !processedNotificationIdsRef.current.has(identifier)) {
+          processedNotificationIdsRef.current.add(identifier);
+          if (data?.conversationId) {
+            router.replace({
+              pathname: '/chat/view-chat',
+              params: {
+                id: String(data.conversationId),
+                ...(data?.messageId ? { messageId: String(data.messageId) } : {}),
+                suppressHighlight: '1',
+              },
+            });
+          }
+        }
+      } catch {}
+    })();
 
     // Listen for notifications received while app is foregrounded
     const receivedSubscription = addNotificationReceivedListener((notification) => {
@@ -53,12 +76,28 @@ export function useNotifications() {
     const responseSubscription = addNotificationResponseReceivedListener((response) => {
       console.log('Notification tapped:', response);
       
-      // Navigate based on notification data
-      const data = response.notification.request.content.data;
-      if (data?.conversationId) {
-        router.push(`/chat/${data.conversationId}`);
+      // Avoid double navigation for the same notification
+      const identifier = response.notification.request.identifier;
+      if (identifier && processedNotificationIdsRef.current.has(identifier)) {
+        return;
       }
-      
+      if (identifier) {
+        processedNotificationIdsRef.current.add(identifier);
+      }
+
+      // Navigate based on notification data
+      const data = response.notification.request.content.data as any;
+      if (data?.conversationId) {
+        router.push({
+          pathname: '/chat/view-chat',
+          params: {
+            id: String(data.conversationId),
+            ...(data?.messageId ? { messageId: String(data.messageId) } : {}),
+            suppressHighlight: '1',
+          },
+        });
+      }
+
       // Clear notification
       Notifications.dismissNotificationAsync(response.notification.request.identifier);
     });

@@ -22,8 +22,8 @@ export default function ChatListPreviewScreen() {
   }, [params.theme]);
 
   const handleOpenConversation = (id: string) => {
-    const query = `?theme=${themeId}&size=${size}&layout=${layout}`;
-    router.push(`/preview/chat/${id}${query}`);
+    const query = `&theme=${themeId}&size=${size}&layout=${layout}`;
+    router.push(`/preview/chat/view-chat?id=${id}${query}`);
   };
 
   return (

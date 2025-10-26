@@ -42,7 +42,7 @@ export default function DeveloperScreen() {
   }, [user?.id]);
 
   const handleOpenInChat = (item: TranslationErrorItem) => {
-    router.push(`/chat/${item.conversationId}?messageId=${item.messageId}`);
+    router.push(`/chat/view-chat?id=${item.conversationId}&messageId=${item.messageId}`);
   };
 
   const handleClearFailed = async () => {
