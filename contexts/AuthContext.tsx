@@ -8,12 +8,14 @@ import { useAuthStore } from '../stores/authStore';
 
 interface AuthContextType {
   initialized: boolean;
+  checkingCredentials: boolean;
 }
 
-const AuthContext = createContext<AuthContextType>({ initialized: false });
+const AuthContext = createContext<AuthContextType>({ initialized: false, checkingCredentials: false });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [initialized, setInitialized] = React.useState(false);
+  const [checkingCredentials, setCheckingCredentials] = React.useState(false);
   const { setUser, setLoading } = useAuthStore();
   const attemptedSilentRef = React.useRef(false);
   const router = useRouter();
@@ -31,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChange(async (user) => {
       if (user) {
         setUser(user);
+        setCheckingCredentials(false);
         if (!initialized) {
           setInitialized(true);
           setLoading(false);
@@ -42,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!attemptedSilentRef.current) {
         attemptedSilentRef.current = true;
         try {
+          setCheckingCredentials(true);
           const creds = await getCreds();
           console.log('Silent sign-in: creds loaded?', !!creds);
           if (creds && creds.email && creds.password) {
@@ -55,6 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (e) {
           console.warn('Silent sign-in attempt failed:', e);
+        } finally {
+          setCheckingCredentials(false);
         }
       }
 
@@ -70,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ initialized }}>
+    <AuthContext.Provider value={{ initialized, checkingCredentials }}>
       {children}
     </AuthContext.Provider>
   );
