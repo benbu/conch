@@ -125,20 +125,34 @@ export const onMessageCreated = onDocumentCreated(
               });
 
               const out = toolResults?.[0]?.output as any;
+              const detected: string = String(out?.detectedSourceLang || '')
+                .trim()
+                .toLowerCase();
+              const targetLower = String(targetLang || '').toLowerCase();
+              const computedNoOp = detected.length > 0 && detected === targetLower;
 
-              await ref.set(
-                {
-                  status: 'completed',
-                  translation: out?.translation || '',
-                  noTranslationNeeded: !!out?.noTranslationNeeded,
-                  detectedSourceLang: out?.detectedSourceLang,
-                  confidence: out?.confidence,
-                  culturalContextHints: out?.culturalContextHints || [],
-                  slangExplanations: out?.slangExplanations || [],
-                  updatedAt: new Date(),
-                },
-                { merge: true }
-              );
+              const update: any = {
+                status: 'completed',
+                translation: out?.translation || '',
+                noTranslationNeeded: computedNoOp,
+                culturalContextHints: Array.isArray(out?.culturalContextHints)
+                  ? out.culturalContextHints
+                  : [],
+                slangExplanations: Array.isArray(out?.slangExplanations)
+                  ? out.slangExplanations
+                  : [],
+                updatedAt: new Date(),
+              };
+              if (
+                typeof out?.detectedSourceLang === 'string' &&
+                out.detectedSourceLang.trim()
+              ) {
+                update.detectedSourceLang = out.detectedSourceLang;
+              }
+              if (typeof out?.confidence === 'number') {
+                update.confidence = out.confidence;
+              }
+              await ref.set(update, { merge: true });
             } catch (e: any) {
               await ref.set(
                 { status: 'error', error: String(e), updatedAt: new Date() },
